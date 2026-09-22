@@ -17,38 +17,38 @@ gestión de catálogo, exploración avanzada, control de acceso por roles y audi
 ## 1. Instalación y configuración
 
 ### Requisitos
-- Node.js **20+** (probado con 20.19)
-- Docker Desktop (opcional: solo para levantar el stack completo)
-- PostgreSQL 16 (portable: alternativa al servicio `db` de Docker)
+- Docker Desktop / Docker Engine (compose) — el stack completo corre en contenedores
+- Node.js **20+** (solo si quieres usar los scripts npm del workspace en el host)
 
-### Pasos (desarrollo local)
+### Pasos (levantar desde cero con Docker Compose)
 
 ```bash
-# 1. Clonar e instalar dependencias del monorepo (npm workspaces)
+# 1. Clonar el repositorio
 git clone <url-del-repositorio>
 cd cmpc-books
-npm install
 
-# 2. Configurar entorno
+# 2. Configurar entorno (opcional — hay valores por defecto seguros para dev)
 cp .env.example .env        # en la raíz
-# Editar JWT_SECRET con un valor real
+# Editar JWT_SECRET con un valor real si lo deseas
 
-# 3. Base de datos
-#   Opción A — Docker (recomendada):
-docker compose up -d db
-#   Opción B — PostgreSQL local ya instalado: crear usuario y base
-#   createuser/createdb, o:
-psql -d postgres -c "CREATE ROLE cmpc WITH LOGIN PASSWORD 'cmpc';"
-psql -d postgres -c "CREATE DATABASE cmpc_books OWNER cmpc;"
-
-# 4. Migraciones + datos semilla (roles, admin, catálogo demo)
-npm run migrate --workspace api        # o: cd apps/api && npx prisma migrate deploy
-npm run seed --workspace api           # o: cd apps/api && npx tsx prisma/seed.ts
-
-# 5. Levantar ambos servicios
-npm run dev:api        # API en http://localhost:3000  (tsx watch)
-npm run dev:web        # Web  en http://localhost:5173  (vite, con proxy /api)
+# 3. Construir y levantar todo el stack (base de datos + API + web)
+docker compose up --build
 ```
+
+Ese único comando levanta y **deja listo desde cero** los tres servicios:
+
+| Servicio | URL |
+|---|---|
+| Web (frontend React) | http://localhost:5173 |
+| API (NestJS) | http://localhost:3000 |
+| Swagger / OpenAPI | http://localhost:3000/api/docs |
+| PostgreSQL | `localhost:5433` (usuario `cmpc` / password `cmpc` / db `cmpc_books`) |
+
+Al arrancar, el contenedor de la API ejecuta automáticamente y de forma idempotente: `prisma generate` → `prisma migrate deploy` → `seed` (roles, usuario admin y catálogo demo) → servidor de desarrollo. No hay pasos manuales de base de datos.
+
+Para detener: `docker compose down` (añade `-v` si quieres borrar también los datos del volumen `db-data` y empezar 100% desde cero).
+
+> 💡 Desarrollo con hot-reload en el host (opcional, sin Docker): `npm install && npm run dev:api && npm run dev:web`, apuntando `DATABASE_URL` a tu PostgreSQL local (ver `apps/api/.env.example`).
 
 ### Usuarios por defecto (seed)
 | Email | Contraseña | Rol |
