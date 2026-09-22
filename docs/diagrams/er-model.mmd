@@ -1,0 +1,87 @@
+
+erDiagram
+    ROLE ||--o{ USER : "tiene"
+    USER ||--o{ AUDITLOG : "registra operaciones"
+    AUTHOR ||--o{ BOOK : "escribe"
+    PUBLISHER ||--o{ BOOK : "publica"
+    GENRE ||--o{ BOOK : "clasifica"
+
+    ROLE {
+        int id PK
+        varchar code UK "ADMIN · OPERADOR · CONSULTA"
+        varchar name
+        varchar description "opcional"
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    USER {
+        int id PK
+        varchar email UK "único"
+        varchar password_hash "bcrypt — nunca en claro"
+        varchar full_name
+        boolean is_active "default true"
+        int role_id FK "Role.id"
+        timestamp deleted_at "soft delete"
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    AUTHOR {
+        int id PK
+        varchar name UK
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    PUBLISHER {
+        int id PK
+        varchar name UK
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    GENRE {
+        int id PK
+        varchar name UK
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    BOOK {
+        int id PK
+        varchar isbn UK "opcional"
+        varchar title
+        text description "opcional"
+        decimal price "10,2"
+        int stock "default 0"
+        varchar availability "IN_STOCK si stock > 0 · OUT_OF_STOCK"
+        varchar image_url "portada"
+        int author_id FK "Author.id"
+        int publisher_id FK "Publisher.id"
+        int genre_id FK "Genre.id"
+        timestamp deleted_at "soft delete"
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    AUDITLOG {
+        int id PK
+        int user_id FK "nullable · sistema/login fallido"
+        varchar user_name "desnormalizado"
+        varchar user_role "desnormalizado"
+        varchar action "CREATE · UPDATE · DELETE · LOGIN · EXPORT"
+        varchar entity_type "BOOK · USER · AUTH"
+        varchar entity_id "opcional"
+        varchar method "HTTP"
+        varchar path "ruta API"
+        json details "sanitizado"
+        varchar ip_address
+        timestamp created_at
+    }
+
+%% ═══════════════════════════════════════════════════════════════════════════
+%% CMPC Libros — Modelo relacional (Mermaid erDiagram)
+%% Alternativa a docs/diagrams/schema.dbml — renderizable en GitHub y
+%% https://mermaid.live (Export → PNG/SVG)
+%% ═══════════════════════════════════════════════════════════════════════════

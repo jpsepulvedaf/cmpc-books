@@ -257,8 +257,14 @@ apps/web/src/
 
 - `README.md` — instalación, uso, resumen de arquitectura, decisiones de diseño (enlaza este documento).
 - Swagger/OpenAPI — autogenerado en `/api/docs` (cuando está activo).
-- Diagrama de arquitectura — Mermaid en este documento; exportable.
-- Modelo relacional — `erDiagram` de Mermaid en este documento; representación estilo dbdiagram.
+- Diagrama de arquitectura — fuente editable en [`docs/diagrams/architecture.mmd`](diagrams/architecture.mmd) (Mermaid; render en mermaid.live o GitHub).
+- Modelo relacional — dos fuentes editables: [`docs/diagrams/schema.dbml`](diagrams/schema.dbml) (DBML oficial de dbdiagram.io, validado con `dbml2sql`) y [`docs/diagrams/er-model.mmd`](diagrams/er-model.mmd) (Mermaid `erDiagram`, render nativo en GitHub).
+
+### Generación de imágenes
+| Fuente | Herramienta | Pasos |
+|---|---|---|
+| `schema.dbml` | https://dbdiagram.io/d | Pegar el contenido del archivo → **Export → PNG / SVG / PDF** |
+| `architecture.mmd` / `er-model.mmd` | https://mermaid.live | Pegar el contenido → **Export → PNG / SVG** |
 
 ---
 

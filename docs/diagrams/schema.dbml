@@ -1,0 +1,125 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// CMPC Libros — Modelo relacional de la base de datos (DBML / dbdiagram.io)
+// Prueba Técnica Full Stack · PostgreSQL 16 · Prisma 7
+//
+// CÓMO USARLO (generar la imagen manualmente):
+//   1) Abre https://dbdiagram.io/d  (editor online, sin cuenta)
+//   2) Pega TODO este código en el panel izquierdo
+//   3) Menú superior → Export → PNG / SVG / PDF
+//
+// Fidelidad: los nombres de columnas en camelCase coinciden 1:1 con
+// schema.prisma y con la migración aplicada (prisma/migrations).
+// Las acciones referenciales son las que Prisma 7 genera por defecto.
+// ═══════════════════════════════════════════════════════════════════════════
+
+Project CMPC_Libros {
+  database_type: 'PostgreSQL'
+  Note: 'CMPC Libros — Modelo relacional (Prueba Técnica Full Stack)'
+}
+
+// ── Roles de usuario (RBAC) ─────────────────────────────────────────────────
+Table Role [headercolor: #6C5CE7, note: 'Roles del RBAC: ADMIN · OPERADOR · CONSULTA'] {
+  id          int          [pk, increment]
+  code        varchar(20)  [unique, not null, note: 'Código: ADMIN | OPERADOR | CONSULTA']
+  name        varchar(100) [not null, note: 'Nombre descriptivo del rol']
+  description varchar(255) [note: 'Descripción opcional']
+  createdAt   timestamp    [default: `now()`]
+  updatedAt   timestamp    [default: `now()`]
+}
+
+// ── Usuarios ────────────────────────────────────────────────────────────────
+Table User [headercolor: #0984E3, note: 'Usuarios del sistema (los provisiona el ADMIN)'] {
+  id           int          [pk, increment]
+  email        varchar(255) [unique, not null, note: 'Correo de acceso (único)']
+  passwordHash varchar(255) [not null, note: 'Hash bcrypt — nunca en claro']
+  fullName     varchar(255) [not null]
+  isActive     boolean      [not null, default: true, note: 'Cuenta activa / desactivada']
+  roleId       int          [not null]
+  deletedAt    timestamp    [note: 'Soft delete']
+  createdAt    timestamp    [default: `now()`]
+  updatedAt    timestamp    [default: `now()`]
+
+  indexes {
+    roleId [name: 'User_roleId_idx']
+  }
+}
+
+// ── Autores ─────────────────────────────────────────────────────────────────
+Table Author [headercolor: #10AC84, note: 'Autores del catálogo'] {
+  id        int          [pk, increment]
+  name      varchar(255) [unique, not null]
+  createdAt timestamp    [default: `now()`]
+  updatedAt timestamp    [default: `now()`]
+}
+
+// ── Editoriales ─────────────────────────────────────────────────────────────
+Table Publisher [headercolor: #10AC84, note: 'Editoriales del catálogo'] {
+  id        int          [pk, increment]
+  name      varchar(255) [unique, not null]
+  createdAt timestamp    [default: `now()`]
+  updatedAt timestamp    [default: `now()`]
+}
+
+// ── Géneros ─────────────────────────────────────────────────────────────────
+Table Genre [headercolor: #10AC84, note: 'Géneros del catálogo'] {
+  id        int          [pk, increment]
+  name      varchar(255) [unique, not null]
+  createdAt timestamp    [default: `now()`]
+  updatedAt timestamp    [default: `now()`]
+}
+
+// ── Libros ──────────────────────────────────────────────────────────────────
+Table Book [headercolor: #E17055, note: 'Catálogo. availability se deriva del stock (server-side)'] {
+  id           int           [pk, increment]
+  isbn         varchar(13)   [unique, note: 'ISBN único si se informa']
+  title        varchar(255)  [not null]
+  description  text          [note: 'Descripción / sinopsis']
+  price        decimal(10,2) [not null, note: 'Precio con 2 decimales']
+  stock        int           [not null, default: 0]
+  availability varchar(20)   [not null, default: 'IN_STOCK', note: 'IN_STOCK si stock > 0 · OUT_OF_STOCK si no']
+  imageUrl     varchar(500)  [note: 'Ruta pública de la portada (/uploads/books/...)']
+  authorId     int           [not null]
+  publisherId  int           [not null]
+  genreId      int           [not null]
+  deletedAt    timestamp     [note: 'Soft delete']
+  createdAt    timestamp     [default: `now()`]
+  updatedAt    timestamp     [default: `now()`]
+
+  indexes {
+    authorId    [name: 'Book_authorId_idx']
+    publisherId [name: 'Book_publisherId_idx']
+    genreId     [name: 'Book_genreId_idx']
+    availability [name: 'Book_availability_idx']
+    title       [name: 'Book_title_idx']
+  }
+}
+
+// ── Auditoría de operaciones ────────────────────────────────────────────────
+Table AuditLog [headercolor: #F2994A, note: 'Auditoría: registra al usuario ejecutor de cada operación'] {
+  id         int          [pk, increment]
+  userId     int          [note: 'NULL para eventos de sistema / login fallido']
+  userName   varchar(255) [note: 'Desnormalizado: sobrevive al borrado del usuario']
+  userRole   varchar(20)  [note: 'Desnormalizado: rol en el momento de la acción']
+  action     varchar(20)  [not null, note: 'CREATE | UPDATE | DELETE | LOGIN | EXPORT | ...']
+  entityType varchar(20)  [not null, note: 'BOOK | USER | AUTH | ...']
+  entityId   varchar(255) [note: 'Id de la entidad afectada (si aplica)']
+  method     varchar(10)  [note: 'HTTP: GET | POST | PATCH | DELETE']
+  path       varchar(255) [note: 'Ruta de la API (sin query string)']
+  details    json         [note: 'Detalles estructurados (nunca contraseñas/tokens)']
+  ipAddress  varchar(45)  [note: 'IPv4 o IPv6 del solicitante']
+  createdAt  timestamp    [default: `now()`]
+
+  indexes {
+    (userId, createdAt)    [name: 'AuditLog_userId_createdAt_idx']
+    (entityType, entityId) [name: 'AuditLog_entityType_entityId_idx']
+  }
+}
+
+// ── Relaciones (acciones referenciales = default de Prisma 7) ───────────────
+// >  : muchos-a-uno (la columna de la izquierda es la FK)
+// >? : FK opcional (puede ser NULL)
+Ref: User.roleId > Role.id [delete: restrict, update: no action]
+Ref: Book.authorId > Author.id [delete: restrict, update: no action]
+Ref: Book.publisherId > Publisher.id [delete: restrict, update: no action]
+Ref: Book.genreId > Genre.id [delete: restrict, update: no action]
+Ref: AuditLog.userId >? User.id [delete: set null, update: no action]

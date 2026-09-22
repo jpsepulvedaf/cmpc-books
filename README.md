@@ -187,6 +187,13 @@ Book (N)──(1) Author / Publisher / Genre
 
 Versión editable con `dbdiagram.io` / Mermaid `erDiagram`: ver [`docs/architecture.md`](docs/architecture.md).
 
+### Fuentes de los diagramas (para generar las imágenes)
+| Diagrama | Archivo fuente | Cómo generar la imagen |
+|---|---|---|
+| Modelo relacional (ERD) | [`docs/diagrams/schema.dbml`](docs/diagrams/schema.dbml) | https://dbdiagram.io/d → pegar el código → **Export → PNG/SVG** (o usar el CLI `dbml2sql` para validar) |
+| Modelo relacional (alternativa) | [`docs/diagrams/er-model.mmd`](docs/diagrams/er-model.mmd) | https://mermaid.live → pegar → **Export → PNG/SVG** (o GitHub lo renderiza nativamente) |
+| Arquitectura del sistema | [`docs/diagrams/architecture.mmd`](docs/diagrams/architecture.mmd) | https://mermaid.live → pegar → **Export → PNG/SVG**
+
 ---
 
 ## 5. API — resumen de endpoints
