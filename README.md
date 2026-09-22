@@ -18,7 +18,9 @@ gestión de catálogo, exploración avanzada, control de acceso por roles y audi
 
 ### Requisitos
 - Docker Desktop / Docker Engine (compose) — el stack completo corre en contenedores
-- Node.js **20+** (solo si quieres usar los scripts npm del workspace en el host)
+- Node.js **20+** (recomendado **22 LTS**, ver nota abajo) — solo si usarás los scripts npm del workspace en el host
+
+> **Nota sobre el gestor de paquetes:** este proyecto usa **npm workspaces** (`package-lock.json`). Ejecuta siempre `npm install` desde la raíz — **no uses yarn ni pnpm**, su resolución de *engines* aborta con Node 20 (p. ej. `vitest@5` exige Node ≥22 como error duro en yarn, mientras npm solo emite un warning). Con Node v20.19.4 la instalación funciona; con Node **22+** además desaparecen los warnings `EBADENGINE` de Prisma/Vitest.
 
 ### Pasos (levantar desde cero con Docker Compose)
 
