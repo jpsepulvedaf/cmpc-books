@@ -13,7 +13,7 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html'],
-      reportsDirectory: '../coverage/web',
+      reportsDirectory: '../../coverage/web',
     },
   },
 });

@@ -48,7 +48,7 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html'],
-      reportsDirectory: '../coverage/api',
+      reportsDirectory: '../../coverage/api',
       // The generated Prisma client and the DB adapter bootstrap are not
       // business code: they are excluded from the coverage gate so the >=80%
       // target reflects the code the unit tests exercise, not infra plumbing.
