@@ -4,7 +4,11 @@ import { basename, join } from 'node:path';
 import { Prisma } from '../../generated/prisma/client';
 import { ApiException } from '../../common/errors/api.exception';
 import { PrismaService } from '../../common/services/prisma.service';
+import { BookFiltersQueryDto } from './dto/book-filters-query.dto';
+import { BookListItemDto } from './dto/book-list-item.dto';
 import { CreateBookDto } from './dto/create-book.dto';
+import { ExportBooksQueryDto } from './dto/export-books-query.dto';
+import { ListBooksQueryDto } from './dto/list-books-query.dto';
 import { UpdateBookDto } from './dto/update-book.dto';
 import {
   BOOKS_UPLOAD_DIR,
@@ -31,6 +35,78 @@ export interface UploadedBookImage {
   path?: string;
   originalname?: string;
 }
+
+/**
+ * Minimal Book row shape consumed by the list/CSV mappers. `price` is the
+ * Prisma Decimal value; it is rendered as a STRING (see BookListItemDto) so
+ * the list matches the existing GET /api/books/:id contract.
+ */
+interface ListableBook {
+  id: number;
+  isbn: string | null;
+  title: string;
+  price: unknown;
+  stock: number;
+  availability: string;
+  imageUrl: string | null;
+  author: { id: number; name: string };
+  publisher: { id: number; name: string };
+  genre: { id: number; name: string };
+}
+
+/**
+ * Sort whitelist: allowed `field` → Prisma orderBy fragment builder.
+ * Anything outside this map is rejected with INVALID_SORT_FIELD so the
+ * orderBy object can never be driven by client-controlled keys.
+ */
+const SORT_ORDER: Record<
+  string,
+  (dir: Prisma.SortOrder) => Prisma.BookOrderByWithRelationInput
+> = {
+  title: (dir) => ({ title: dir }),
+  price: (dir) => ({ price: dir }),
+  stock: (dir) => ({ stock: dir }),
+  createdAt: (dir) => ({ createdAt: dir }),
+  availability: (dir) => ({ availability: dir }),
+  'author.name': (dir) => ({ author: { name: dir } }),
+  'publisher.name': (dir) => ({ publisher: { name: dir } }),
+  'genre.name': (dir) => ({ genre: { name: dir } }),
+};
+
+/** Safety cap for the unpaginated CSV export (documented in the endpoint). */
+const MAX_EXPORT_ROWS = 1000;
+
+// Product-facing CSV data is neutral Spanish — the BOM (\uFEFF) is what lets
+// Excel render the accents/ñ correctly. Availability keeps the server enum
+// code (IN_STOCK / OUT_OF_STOCK) so the export is machine-greppable and
+// unambiguous, matching the API filter contract.
+const CSV_HEADERS = [
+  'Título',
+  'ISBN',
+  'Autor',
+  'Editorial',
+  'Género',
+  'Precio',
+  'Stock',
+  'Disponibilidad',
+];
+
+/** CSV cell: double quotes around every field, embedded quotes doubled (RFC 4180). */
+const csvCell = (value: string): string => `"${value.replace(/"/g, '""')}"`;
+
+const csvRow = (book: ListableBook): string =>
+  [
+    book.title ?? '',
+    book.isbn ?? '',
+    book.author.name,
+    book.publisher.name,
+    book.genre.name,
+    Number(book.price).toFixed(2),
+    String(book.stock),
+    book.availability,
+  ]
+    .map(csvCell)
+    .join(',');
 
 /**
  * Book domain service. Every write touches exactly ONE Book row, so single
@@ -83,6 +159,54 @@ export class BooksService {
       throw new ApiException(404, 'BOOK_NOT_FOUND', 'Book not found');
     }
     return book;
+  }
+
+  /**
+   * Server-side paginated list. Filters/sort are shared with the CSV export
+   * (same buildWhere/buildOrderBy), so both endpoints stay in sync by
+   * construction. Uses a separate count + findMany (skip/take).
+   */
+  async list(query: ListBooksQueryDto) {
+    const { page, pageSize } = query;
+    const where = this.buildWhere(query);
+
+    const [items, total] = await Promise.all([
+      this.prisma.client.book.findMany({
+        where,
+        include: this.include,
+        orderBy: this.buildOrderBy(query.sort),
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+      this.prisma.client.book.count({ where }),
+    ]);
+
+    return {
+      items: items.map((book) => this.toListItem(book)),
+      page,
+      pageSize,
+      total,
+      totalPages: Math.ceil(total / pageSize),
+    };
+  }
+
+  /**
+   * Unpaginated CSV export matching the same filters/sort as `list`
+   * (ADMIN/OPERADOR only — enforced by @Roles on the route). Capped at
+   * MAX_EXPORT_ROWS rows: the CSV is a deliberate product export, not a
+   * full-table dump. The raw CSV string (with BOM) is returned and the
+   * controller writes it via @Res() so the global envelope is bypassed.
+   */
+  async exportCsv(query: ExportBooksQueryDto): Promise<string> {
+    const books = await this.prisma.client.book.findMany({
+      where: this.buildWhere(query),
+      include: this.include,
+      orderBy: this.buildOrderBy(query.sort),
+      take: MAX_EXPORT_ROWS,
+    });
+
+    const rows = [CSV_HEADERS.join(','), ...books.map(csvRow)];
+    return `\uFEFF${rows.join('\r\n')}\r\n`;
   }
 
   async update(id: number, dto: UpdateBookDto) {
@@ -178,6 +302,96 @@ export class BooksService {
       data: { imageUrl: null },
     });
     this.tryRemoveStoredFile(book.imageUrl);
+  }
+
+  /**
+   * Shared WHERE builder for list + export. `deletedAt: null` is ALWAYS part
+   * of the filter; search is an OR over title / isbn / author name while the
+   * exact filters (genreId, publisherId, authorId, availability) join with AND.
+   */
+  private buildWhere(query: BookFiltersQueryDto): Prisma.BookWhereInput {
+    const filters: Prisma.BookWhereInput[] = [{ deletedAt: null }];
+
+    if (query.genreId !== undefined) filters.push({ genreId: query.genreId });
+    if (query.publisherId !== undefined) filters.push({ publisherId: query.publisherId });
+    if (query.authorId !== undefined) filters.push({ authorId: query.authorId });
+    if (query.availability !== undefined) filters.push({ availability: query.availability });
+
+    const search = query.search?.trim();
+    if (search) {
+      // Partial, case-insensitive match on title, ISBN and author name. The
+      // to-one relation filter uses `is:` to target the related Author row.
+      filters.push({
+        OR: [
+          { title: { contains: search, mode: 'insensitive' } },
+          { isbn: { contains: search, mode: 'insensitive' } },
+          { author: { is: { name: { contains: search, mode: 'insensitive' } } } },
+        ],
+      });
+    }
+
+    return filters.length === 1 ? filters[0] : { AND: filters };
+  }
+
+  /**
+   * Multi-field sort, e.g. `sort=title:asc,publisher.name:desc`. Strict
+   * whitelist: unknown fields or directions are rejected with
+   * INVALID_SORT_FIELD (400) instead of silently ignoring them.
+   */
+  private buildOrderBy(sort: string | undefined): Prisma.BookOrderByWithRelationInput[] {
+    if (!sort || sort.trim().length === 0) {
+      return [];
+    }
+
+    const orderBy: Prisma.BookOrderByWithRelationInput[] = [];
+    const invalid: string[] = [];
+
+    for (const rawItem of sort.split(',')) {
+      const item = rawItem.trim();
+      if (!item) continue;
+
+      const parts = item.split(':');
+      if (parts.length > 2) {
+        invalid.push(item);
+        continue;
+      }
+
+      const field = parts[0].trim();
+      const dir = (parts.length === 2 ? parts[1] : 'asc').trim().toLowerCase();
+      const build = SORT_ORDER[field];
+
+      if (!build || (dir !== 'asc' && dir !== 'desc')) {
+        invalid.push(item);
+        continue;
+      }
+      orderBy.push(build(dir as Prisma.SortOrder));
+    }
+
+    if (invalid.length > 0) {
+      throw new ApiException(
+        400,
+        'INVALID_SORT_FIELD',
+        'Sort must reference allowed fields with asc|desc direction',
+        invalid,
+      );
+    }
+    return orderBy;
+  }
+
+  /** Reduces a full Book row to the small catalog-grid payload. */
+  private toListItem(book: ListableBook): BookListItemDto {
+    return {
+      id: book.id,
+      isbn: book.isbn,
+      title: book.title,
+      price: String(book.price),
+      stock: book.stock,
+      availability: book.availability,
+      imageUrl: book.imageUrl,
+      author: { id: book.author.id, name: book.author.name },
+      publisher: { id: book.publisher.id, name: book.publisher.name },
+      genre: { id: book.genre.id, name: book.genre.name },
+    };
   }
 
   private async findActive(id: number) {
