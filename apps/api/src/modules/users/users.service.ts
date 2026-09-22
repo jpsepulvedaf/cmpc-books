@@ -15,7 +15,7 @@ export interface ListedUser {
   email: string;
   fullName: string;
   isActive: boolean;
-  roleCode: string;
+  role: { code: string; name: string };
   createdAt: Date;
 }
 
@@ -30,7 +30,13 @@ export class UsersService {
   /** Paginated, soft-delete-filtered user list with optional search. */
   async list(
     query: ListUsersQueryDto,
-  ): Promise<{ items: ListedUser[]; total: number; page: number; pageSize: number }> {
+  ): Promise<{
+    items: ListedUser[];
+    total: number;
+    page: number;
+    pageSize: number;
+    totalPages: number;
+  }> {
     const { page, pageSize, search } = query;
     const where = this.buildWhere(search);
 
@@ -50,6 +56,7 @@ export class UsersService {
       total,
       page,
       pageSize,
+      totalPages: Math.max(1, Math.ceil(total / pageSize)),
     };
   }
 
@@ -155,14 +162,14 @@ export class UsersService {
     fullName: string;
     isActive: boolean;
     createdAt: Date;
-    role: { code: string };
+    role: { code: string; name: string };
   }): ListedUser {
     return {
       id: user.id,
       email: user.email,
       fullName: user.fullName,
       isActive: user.isActive,
-      roleCode: user.role.code,
+      role: { code: user.role.code, name: user.role.name },
       createdAt: user.createdAt,
     };
   }

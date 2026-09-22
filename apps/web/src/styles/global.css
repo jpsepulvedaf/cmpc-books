@@ -1,22 +1,4 @@
-* {
-  box-sizing: border-box;
-}
+/* CMPC Libros — global stylesheet (design tokens + components) */
 
-:root {
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  color-scheme: light dark;
-}
-
-body {
-  margin: 0;
-  min-height: 100vh;
-  background: #fafafa;
-  color: #222;
-}
-
-@media (prefers-color-scheme: dark) {
-  body {
-    background: #171717;
-    color: #f4f4f4;
-  }
-}
+@import './tokens.css';
+@import './components.css';

@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { unlink } from 'node:fs/promises';
+import { readFile, unlink } from 'node:fs/promises';
 import { basename, join } from 'node:path';
 import { Prisma } from '../../generated/prisma/client';
 import { ApiException } from '../../common/errors/api.exception';
@@ -27,6 +27,37 @@ export const AVAILABILITY = {
 
 const deriveAvailability = (stock: number): string =>
   stock > 0 ? AVAILABILITY.IN_STOCK : AVAILABILITY.OUT_OF_STOCK;
+
+/**
+ * Real content sniffing of the uploaded file header ("magic bytes").
+ * The multipart client-declared MIME cannot be trusted (it can be forged), so
+ * we verify an actual JPEG/PNG/WebP signature from the persisted file before
+ * accepting it. Returns true when the header matches one of the allowed
+ * formats.
+ */
+async function matchesImageSignature(filePath: string): Promise<boolean> {
+  try {
+    const data = await readFile(filePath);
+    const buf = Buffer.isBuffer(data) ? data : Buffer.from(data);
+    const header = buf.subarray(0, 12);
+
+    // PNG: \x89PNG\r\n\x1a\n
+    if (header.length >= 8 && header[0] === 0x89 && header[1] === 0x50 && header[2] === 0x4e && header[3] === 0x47 && header[4] === 0x0d && header[5] === 0x0a && header[6] === 0x1a && header[7] === 0x0a) {
+      return true;
+    }
+    // JPEG: FF D8 FF
+    if (header.length >= 3 && header[0] === 0xff && header[1] === 0xd8 && header[2] === 0xff) {
+      return true;
+    }
+    // WebP: RIFF....WEBPVP8
+    if (header.length >= 12 && header[0] === 0x52 && header[1] === 0x49 && header[2] === 0x46 && header[3] === 0x46 && header[4] === 0x57 && header[5] === 0x45 && header[6] === 0x42 && header[7] === 0x50 && header[8] === 0x20 && header[9] === 0x56 && header[10] === 0x50 && header[11] === 0x38) {
+      return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
 
 /** Shape of the multer file injected by @UploadedFile(). */
 export interface UploadedBookImage {
@@ -284,7 +315,7 @@ export class BooksService {
   async uploadImage(id: number, file: UploadedBookImage | undefined) {
     const book = await this.findActive(id);
 
-    if (!file || !isAllowedImageMime(file.mimetype)) {
+    if (!file || !isAllowedImageMime(file.mimetype) || !file.path) {
       throw new ApiException(
         400,
         'INVALID_IMAGE',
@@ -292,10 +323,19 @@ export class BooksService {
       );
     }
 
-    // The file itself was already persisted by multer under a uuid name; we
-    // only persist the public relative URL. Only the stored basename is used,
-    // never the client-supplied original name.
-    const imageUrl = `${IMAGE_URL_PREFIX}/${basename(file.path ?? '')}`;
+    // The multipart MIME can be forged; verify the real file signature and
+    // remove the persisted file when it is not a genuine image.
+    if (!(await matchesImageSignature(file.path))) {
+      await unlink(file.path).catch(() => undefined);
+      throw new ApiException(
+        400,
+        'INVALID_IMAGE',
+        'The uploaded file is not a valid JPEG, PNG or WebP image',
+      );
+    }
+
+    // Only the stored basename is used, never the client-supplied original name.
+    const imageUrl = `${IMAGE_URL_PREFIX}/${basename(file.path)}`;
     const updated = await this.prisma.client.book.update({
       where: { id: book.id },
       data: { imageUrl },
