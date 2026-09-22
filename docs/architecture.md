@@ -44,24 +44,64 @@ CRUD, exportación CSV, auditoría de operaciones y control de acceso basado en 
 
 ## 3. Arquitectura del Sistema
 
-```
-┌────────────────────────────┐      ┌──────────────────────────────────────────┐
-│         React Web           │ HTTP │              NestJS API                   │
-│  apps/web (Vite + TS)       │─────▶│  apps/api                                 │
-│  · Login / almacén JWT      │      │  · Interceptores globales (respuesta+audit)│
-│  · Listado de catálogo      │      │  · AuthGuard (JWT) + RolesGuard (@Roles) │
-│    (filtros, orden,         │      │  · Módulos: auth, users, books, authors, │
-│     paginación, búsqueda)   │      │    publishers, genres, audit, export,    │
-│  · Formularios CRUD + imagen│      │    health                                │
-│  · Manejo de errores        │      │  · Controllers → Services → Repositories  │
-└────────────────────────────┘      │  · Swagger (condicional)                  │
-                                     └───────────┬──────────────────────────────┘
-                                                 │ Prisma (cliente tipado)
-                                                 ▼
-                                     ┌────────────────────────────┐
-                                     │       PostgreSQL            │
-                                     │  (Docker, volumen persistido)│
-                                     └────────────────────────────┘
+> Diagrama Mermaid embebido — GitHub lo renderiza nativamente como imagen. Fuente editable: `docs/diagrams/architecture.mmd`.
+
+```mermaid
+flowchart TD
+    USR(["👤 Usuario / Navegador"])
+
+    subgraph FE["Frontend · apps/web (React 18 + TypeScript + Vite 6)"]
+        LOGIN["Login / sesión JWT"]
+        CATALOG["Catálogo<br/>filtros · orden · paginación · búsqueda (debounce)"]
+        FORM["Formularios CRUD + validación reactiva + imagen"]
+        DETAIL["Detalle del libro"]
+        ADMINUI["Usuarios · Auditoría (solo ADMIN)"]
+        ERRUI["Manejo de errores (toasts en español)"]
+    end
+
+    subgraph BE["Backend · apps/api (NestJS 12 + TypeScript)"]
+        GATE["Interceptores globales<br/>(envelope de respuesta + auditoría)"]
+        GUARDS["JwtAuthGuard (JWT) + RolesGuard (@Roles)"]
+        MODS["Módulos<br/>auth · users · books · authors · publishers · genres · audit · export · health"]
+        ROUTE["Controllers → Services → Repositories<br/>(capa de repositorio sobre PrismaService)"]
+        SWAGGER["Swagger / OpenAPI<br/>(condicional · SWAGGER_ENABLED)"]
+        LOGGER["Logging estructurado<br/>(Logger de Nest por módulo)"]
+    end
+
+    PRISMA["Prisma 7<br/>cliente tipado + driver adapter (@prisma/adapter-pg)"]
+    DB[("PostgreSQL 16<br/>volumen Docker persistente")]
+
+    USR -->|HTTPS| LOGIN
+    USR -->|HTTPS| CATALOG
+    USR -->|HTTPS| FORM
+    USR -->|HTTPS| DETAIL
+    USR -->|HTTPS| ADMINUI
+
+    LOGIN -->|POST /api/auth/login| GATE
+    CATALOG -->|GET /api/books| GATE
+    FORM -->|CRUD + multipart| GATE
+    DETAIL -->|GET /api/books/:id| GATE
+    ADMINUI -->|/api/users · /api/audit| GATE
+
+    GATE --> GUARDS
+    GUARDS --> MODS
+    MODS --> ROUTE
+    ROUTE --> PRISMA
+    PRISMA -->|SQL| DB
+
+    GATE -.->|"escribe AuditLog (best-effort)"| DB
+    MODS -.-> LOGGER
+    SWAGGER -.->|"documenta"| MODS
+
+    subgraph DOCKER["Infraestructura · docker-compose.yml (multi-stage, perfiles dev/prod)"]
+        SVC_DB["Servicio db — PostgreSQL 16 (host 5433)"]
+        SVC_API["Servicio api — NestJS (host 3000)"]
+        SVC_WEB["Servicio web — Vite dev / nginx prod (host 5173)"]
+    end
+
+    SVC_WEB -.->|"proxy /api y /uploads"| SVC_API
+    SVC_API -.->|"DATABASE_URL"| SVC_DB
+    SVC_DB -.->|"volumen db-data"| DB
 ```
 
 **Infraestructura** — `docker-compose.yml` orquesta tres servicios:
@@ -73,42 +113,89 @@ CRUD, exportación CSV, auditoría de operaciones y control de acceso basado en 
 
 ## 4. Modelo de Datos (Relacional)
 
-```
-┌──────────────┐      ┌──────────────┐
-│     Role     │      │   Publisher  │
-│ id           │      │ id           │
-│ code UNIQUE  │      │ name UNIQUE  │
-│ name         │      └──────────────┘
-│ description  │            │1
-└──────────────┘            │
-       │1                    │N
-       │N              ┌──────────────┐
-┌──────────────┐      │     Book     │
-│     User     │◀─────│ id           │
-│ id           │      │ isbn UNIQUE  │
-│ email UNIQUE │      │ title        │
-│ passwordHash │N     │ description  │
-│ fullName     │      │ price NUMERIC│
-│ isActive     │      │ stock INT    │
-│ roleId FK    │      │ availability │  ◀ derivado: IN_STOCK si stock > 0
-│ deletedAt    │      │ imageUrl     │
-└──────────────┘      │ authorId FK  │1──▶ Author (id, name UNIQUE)
-       │1             │ publisherId FK│──▶ Publisher
-       │N             │ genreId FK   │1──▶ Genre (id, name UNIQUE)
-┌────────────────┐    │ deletedAt    │
-│   AuditLog     │    │ timestamps   │
-│ id             │    └──────────────┘
-│ userId FK NULL │  ◀ (se mantiene NULL-able: eventos de sistema)
-│ userName       │  ◀ desnormalizado para legibilidad
-│ userRole       │  ◀ desnormalizado para legibilidad
-│ action         │  (CREATE | UPDATE | DELETE | LOGIN | EXPORT | ...)
-│ entityType     │  (BOOK | USER | AUTH | ...)
-│ entityId       │
-│ method, path   │
-│ details JSONB  │
-│ ipAddress      │
-│ createdAt      │
-└────────────────┘
+> Diagrama Mermaid embebido — GitHub lo renderiza nativamente como imagen. Fuente editable: `docs/diagrams/er-model.mmd` (DBML para dbdiagram.io: `docs/diagrams/schema.dbml`).
+
+```mermaid
+erDiagram
+    ROLE ||--o{ USER : "tiene"
+    USER ||--o{ AUDITLOG : "registra operaciones"
+    AUTHOR ||--o{ BOOK : "escribe"
+    PUBLISHER ||--o{ BOOK : "publica"
+    GENRE ||--o{ BOOK : "clasifica"
+
+    ROLE {
+        int id PK
+        varchar code UK "ADMIN · OPERADOR · CONSULTA"
+        varchar name
+        varchar description "opcional"
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    USER {
+        int id PK
+        varchar email UK "único"
+        varchar password_hash "bcrypt — nunca en claro"
+        varchar full_name
+        boolean is_active "default true"
+        int role_id FK "Role.id"
+        timestamp deleted_at "soft delete"
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    AUTHOR {
+        int id PK
+        varchar name UK
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    PUBLISHER {
+        int id PK
+        varchar name UK
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    GENRE {
+        int id PK
+        varchar name UK
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    BOOK {
+        int id PK
+        varchar isbn UK "opcional"
+        varchar title
+        text description "opcional"
+        decimal price "10,2"
+        int stock "default 0"
+        varchar availability "IN_STOCK si stock > 0 · OUT_OF_STOCK"
+        varchar image_url "portada"
+        int author_id FK "Author.id"
+        int publisher_id FK "Publisher.id"
+        int genre_id FK "Genre.id"
+        timestamp deleted_at "soft delete"
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    AUDITLOG {
+        int id PK
+        int user_id FK "nullable · sistema/login fallido"
+        varchar user_name "desnormalizado"
+        varchar user_role "desnormalizado"
+        varchar action "CREATE · UPDATE · DELETE · LOGIN · EXPORT"
+        varchar entity_type "BOOK · USER · AUTH"
+        varchar entity_id "opcional"
+        varchar method "HTTP"
+        varchar path "ruta API"
+        json details "sanitizado"
+        varchar ip_address
+        timestamp created_at
+    }
 ```
 
 ### Relaciones

@@ -149,50 +149,97 @@ cmpc-books/
 
 ## 4. Modelo relacional de la base de datos
 
-```
-Role (1)──(N) User (1)──(N) AuditLog
-Book (N)──(1) Author / Publisher / Genre
-```
+> El diagrama siguiente es un bloque Mermaid: **GitHub lo renderiza nativamente** como imagen dentro de este documento.
 
-```
-┌──────────────┐      ┌──────────────┐
-│     Role     │      │   Publisher  │
-│ id / code /  │      │ id / name    │
-│ name / desc  │      └──────────────┘
-└──────────────┘            │1
-       │1                    │N
-       │N              ┌──────────────┐
-┌──────────────┐      │     Book     │
-│     User     │      │ id / isbn    │
-│ id / email   │      │ title / desc │
-│ passwordHash │      │ price / stock│
-│ fullName     │      │ availability │
-│ isActive     │      │ imageUrl     │
-│ roleId FK    │      │ authorId FK  │──▶ Author
-│ deletedAt    │      │ publisherId FK│──▶ Publisher
-└──────────────┘      │ genreId FK   │──▶ Genre
-       │1             │ deletedAt    │
-       │N             └──────────────┘
-┌────────────────┐
-│   AuditLog     │
-│ userId FK NULL │
-│ userName /Role │
-│ action /  type │
-│ entityId       │
-│ method / path  │
-│ details JSONB  │
-│ ipAddress      │
-└────────────────┘
-```
+```mermaid
+erDiagram
+    ROLE ||--o{ USER : "tiene"
+    USER ||--o{ AUDITLOG : "registra operaciones"
+    AUTHOR ||--o{ BOOK : "escribe"
+    PUBLISHER ||--o{ BOOK : "publica"
+    GENRE ||--o{ BOOK : "clasifica"
 
-Versión editable con `dbdiagram.io` / Mermaid `erDiagram`: ver [`docs/architecture.md`](docs/architecture.md).
+    ROLE {
+        int id PK
+        varchar code UK "ADMIN · OPERADOR · CONSULTA"
+        varchar name
+        varchar description "opcional"
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    USER {
+        int id PK
+        varchar email UK "único"
+        varchar password_hash "bcrypt — nunca en claro"
+        varchar full_name
+        boolean is_active "default true"
+        int role_id FK "Role.id"
+        timestamp deleted_at "soft delete"
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    AUTHOR {
+        int id PK
+        varchar name UK
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    PUBLISHER {
+        int id PK
+        varchar name UK
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    GENRE {
+        int id PK
+        varchar name UK
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    BOOK {
+        int id PK
+        varchar isbn UK "opcional"
+        varchar title
+        text description "opcional"
+        decimal price "10,2"
+        int stock "default 0"
+        varchar availability "IN_STOCK si stock > 0 · OUT_OF_STOCK"
+        varchar image_url "portada"
+        int author_id FK "Author.id"
+        int publisher_id FK "Publisher.id"
+        int genre_id FK "Genre.id"
+        timestamp deleted_at "soft delete"
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    AUDITLOG {
+        int id PK
+        int user_id FK "nullable · sistema/login fallido"
+        varchar user_name "desnormalizado"
+        varchar user_role "desnormalizado"
+        varchar action "CREATE · UPDATE · DELETE · LOGIN · EXPORT"
+        varchar entity_type "BOOK · USER · AUTH"
+        varchar entity_id "opcional"
+        varchar method "HTTP"
+        varchar path "ruta API"
+        json details "sanitizado"
+        varchar ip_address
+        timestamp created_at
+    }
+```
 
 ### Fuentes de los diagramas (para generar las imágenes)
 | Diagrama | Archivo fuente | Cómo generar la imagen |
 |---|---|---|
 | Modelo relacional (ERD) | [`docs/diagrams/schema.dbml`](docs/diagrams/schema.dbml) | https://dbdiagram.io/d → pegar el código → **Export → PNG/SVG** (o usar el CLI `dbml2sql` para validar) |
-| Modelo relacional (alternativa) | [`docs/diagrams/er-model.mmd`](docs/diagrams/er-model.mmd) | https://mermaid.live → pegar → **Export → PNG/SVG** (o GitHub lo renderiza nativamente) |
-| Arquitectura del sistema | [`docs/diagrams/architecture.mmd`](docs/diagrams/architecture.mmd) | https://mermaid.live → pegar → **Export → PNG/SVG**
+| Modelo relacional (alternativa) | [`docs/diagrams/er-model.mmd`](docs/diagrams/er-model.mmd) | https://mermaid.live → pegar → **Export → PNG/SVG** (GitHub también lo renderiza embebiéndolo en los `.md`) |
+| Arquitectura del sistema | [`docs/diagrams/architecture.mmd`](docs/diagrams/architecture.mmd) | https://mermaid.live → pegar → **Export → PNG/SVG** |
 
 ---
 
