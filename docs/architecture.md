@@ -44,6 +44,14 @@ CRUD, exportación CSV, auditoría de operaciones y control de acceso basado en 
 
 ## 3. Arquitectura del Sistema
 
+### Diagrama de arquitectura
+
+![Diagrama de arquitectura del sistema](diagrams/architecture.png)
+
+*Fuente editable (Mermaid): `docs/diagrams/architecture.mmd`*
+
+### Vista Mermaid (render nativo en GitHub)
+
 > Diagrama Mermaid embebido — GitHub lo renderiza nativamente como imagen. Fuente editable: `docs/diagrams/architecture.mmd`.
 
 ```mermaid
@@ -112,6 +120,14 @@ flowchart TD
 ---
 
 ## 4. Modelo de Datos (Relacional)
+
+### Diagrama (generado con dbdiagram.io)
+
+![Modelo relacional de la base de datos](diagrams/database-model.png)
+
+*Fuente editable (DBML): `docs/diagrams/schema.dbml`*
+
+### Vista alternativa (Mermaid — GitHub la renderiza nativamente)
 
 > Diagrama Mermaid embebido — GitHub lo renderiza nativamente como imagen. Fuente editable: `docs/diagrams/er-model.mmd` (DBML para dbdiagram.io: `docs/diagrams/schema.dbml`).
 
@@ -344,8 +360,8 @@ apps/web/src/
 
 - `README.md` — instalación, uso, resumen de arquitectura, decisiones de diseño (enlaza este documento).
 - Swagger/OpenAPI — autogenerado en `/api/docs` (cuando está activo).
-- Diagrama de arquitectura — fuente editable en [`docs/diagrams/architecture.mmd`](diagrams/architecture.mmd) (Mermaid; render en mermaid.live o GitHub).
-- Modelo relacional — dos fuentes editables: [`docs/diagrams/schema.dbml`](diagrams/schema.dbml) (DBML oficial de dbdiagram.io, validado con `dbml2sql`) y [`docs/diagrams/er-model.mmd`](diagrams/er-model.mmd) (Mermaid `erDiagram`, render nativo en GitHub).
+- **Diagrama de arquitectura** — imagen versionada [`docs/diagrams/architecture.png`](diagrams/architecture.png) + fuente editable [`docs/diagrams/architecture.mmd`](diagrams/architecture.mmd) (Mermaid; render en mermaid.live o GitHub).
+- **Modelo relacional** — imagen versionada [`docs/diagrams/database-model.png`](diagrams/database-model.png) + fuentes editables: [`docs/diagrams/schema.dbml`](diagrams/schema.dbml) (DBML oficial de dbdiagram.io, validado con `dbml2sql`) y [`docs/diagrams/er-model.mmd`](diagrams/er-model.mmd) (Mermaid `erDiagram`, render nativo en GitHub).
 
 ### Generación de imágenes
 | Fuente | Herramienta | Pasos |

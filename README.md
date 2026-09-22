@@ -106,6 +106,12 @@ npm run dev:web        # Web  en http://localhost:5173  (vite, con proxy /api)
 
 Resumen ejecutivo — detalles ampliados en [`docs/architecture.md`](docs/architecture.md).
 
+### Diagrama de arquitectura del sistema
+
+![Diagrama de arquitectura del sistema](docs/diagrams/architecture.png)
+
+*Fuente editable (Mermaid): [`docs/diagrams/architecture.mmd`](docs/diagrams/architecture.mmd)*
+
 ### Estructura del monorepo
 ```
 cmpc-books/
@@ -148,6 +154,14 @@ cmpc-books/
 ---
 
 ## 4. Modelo relacional de la base de datos
+
+### Diagrama (generado con dbdiagram.io)
+
+![Modelo relacional de la base de datos](docs/diagrams/database-model.png)
+
+*Fuente editable (DBML): [`docs/diagrams/schema.dbml`](docs/diagrams/schema.dbml) — versión interactiva en https://dbdiagram.io/d*
+
+### Vista alternativa (Mermaid — GitHub la renderiza nativamente)
 
 > El diagrama siguiente es un bloque Mermaid: **GitHub lo renderiza nativamente** como imagen dentro de este documento.
 
@@ -234,12 +248,12 @@ erDiagram
     }
 ```
 
-### Fuentes de los diagramas (para generar las imágenes)
-| Diagrama | Archivo fuente | Cómo generar la imagen |
-|---|---|---|
-| Modelo relacional (ERD) | [`docs/diagrams/schema.dbml`](docs/diagrams/schema.dbml) | https://dbdiagram.io/d → pegar el código → **Export → PNG/SVG** (o usar el CLI `dbml2sql` para validar) |
-| Modelo relacional (alternativa) | [`docs/diagrams/er-model.mmd`](docs/diagrams/er-model.mmd) | https://mermaid.live → pegar → **Export → PNG/SVG** (GitHub también lo renderiza embebiéndolo en los `.md`) |
-| Arquitectura del sistema | [`docs/diagrams/architecture.mmd`](docs/diagrams/architecture.mmd) | https://mermaid.live → pegar → **Export → PNG/SVG** |
+### Fuentes de los diagramas (para generar/editar las imágenes)
+| Diagrama | Imagen versionada | Archivo fuente | Cómo regenerar |
+|---|---|---|---|
+| Modelo relacional (ERD) | [`docs/diagrams/database-model.png`](docs/diagrams/database-model.png) | [`docs/diagrams/schema.dbml`](docs/diagrams/schema.dbml) | https://dbdiagram.io/d → pegar el código → **Export → PNG/SVG** |
+| Modelo relacional (alternativa) | *(embebido en los .md)* | [`docs/diagrams/er-model.mmd`](docs/diagrams/er-model.mmd) | https://mermaid.live → pegar → **Export → PNG/SVG** (GitHub renderiza el bloque nativo) |
+| Arquitectura del sistema | [`docs/diagrams/architecture.png`](docs/diagrams/architecture.png) | [`docs/diagrams/architecture.mmd`](docs/diagrams/architecture.mmd) | https://mermaid.live → pegar → **Export → PNG/SVG** |
 
 ---
 
