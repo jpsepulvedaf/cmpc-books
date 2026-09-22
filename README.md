@@ -50,7 +50,55 @@ Al arrancar, el contenedor de la API ejecuta automáticamente y de forma idempot
 
 Para detener: `docker compose down` (añade `-v` si quieres borrar también los datos del volumen `db-data` y empezar 100% desde cero).
 
-> 💡 Desarrollo con hot-reload en el host (opcional, sin Docker): `npm install && npm run dev:api && npm run dev:web`, apuntando `DATABASE_URL` a tu PostgreSQL local (ver `apps/api/.env.example`).
+---
+
+### 🚀 Modo desarrollo local (hot-reload, sin Docker para API/Web)
+
+Para iterar rápido con *hot reload* de la API (`node --watch`) y del frontend (Vite) directamente en el host:
+
+#### Requisitos adicionales
+- Node.js **20+** (recomendado **22 LTS**)
+- npm (workspaces)
+- PostgreSQL 16 disponible **o** Docker solo para la base de datos (lo más cómodo)
+
+#### Pasos
+
+```bash
+# 1. Dependencias del monorepo (único npm install, desde la raíz)
+npm install
+
+# 2. Entorno (ajusta JWT_SECRET)
+cp .env.example .env        # en la raíz
+
+# 3. Base de datos — elige UNA de estas dos:
+#   Opción A — solo el contenedor PostgreSQL (recomendada):
+docker compose up -d db
+#     → PostgreSQL publicado en localhost:5433 (usuario/password/db: cmpc/cmpc/cmpc_books)
+
+#   Opción B — PostgreSQL local ya instalado:
+#     crea la base y ajusta DATABASE_URL en .env (p. ej. postgresql://USER:PASS@localhost:5432/cmpc_books)
+createdb cmpc_books          # (o el método que uses: PgAdmin, psql, etc.)
+
+# 4. Preparar la base: cliente Prisma + migraciones + datos semilla
+npm run migrate --workspace api
+npm run seed --workspace api           # roles, admin y catálogo demo (idempotente)
+
+# 5. Levantar servicios (dos terminales):
+npm run dev:api             # API  → http://localhost:3000  (Node --watch)
+npm run dev:web             # Web  → http://localhost:5173  (Vite, proxy /api y /uploads)
+```
+
+#### Qué hace cada comando
+
+| Comando | Descripción |
+|---|---|
+| `npm run migrate --workspace api` | Genera el cliente Prisma y aplica las migraciones a la BD |
+| `npm run seed --workspace api` | Carga roles, usuario admin y catálogo demo (seguro repetirlo) |
+| `npm run dev:api` | Compila el API y lo ejecuta con **hot reload** en el cambio de código |
+| `npm run dev:web` | Levanta Vite con *hot reload* y proxy automático de `/api` y `/uploads` al backend |
+
+> 💡 Ver desplegable de servicios levantados:<br>
+> Web: http://localhost:5173 · API: http://localhost:3000 · Swagger: http://localhost:3000/api/docs
 
 ### Usuarios por defecto (seed)
 | Email | Contraseña | Rol |
