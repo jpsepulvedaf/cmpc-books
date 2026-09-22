@@ -1,19 +1,31 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import helmet from 'helmet';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { swaggerEnabled } from './config/swagger.config';
+import { ensureUploadDirs, UPLOADS_ROOT } from './modules/books/image-upload.config';
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule, { cors: true });
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, { cors: true });
   const config = app.get(ConfigService);
 
-  app.use(helmet());
+  // CORP disabled so the web app (different origin) can render <img> tags from
+  // /uploads. In production these files would sit behind a CDN instead.
+  app.use(helmet({ crossOriginResourcePolicy: false }));
 
   // Global prefix: every route lives under /api
   app.setGlobalPrefix('api');
+
+  // ─── Uploaded images ────────────────────────────────────────────────────
+  // Ensure the upload folder exists, then serve it read-only:
+  //   - write endpoints live under /api (choose role + validate, see BooksModule)
+  //   - the static route is intentionally public and OUTSIDE the /api prefix,
+  //     because <img> tags fetch the URL straight from the browser origin.
+  await ensureUploadDirs();
+  app.useStaticAssets(UPLOADS_ROOT, { prefix: '/uploads', index: false });
 
   // Global request payload validation (whitelist + transform DTOs)
   app.useGlobalPipes(

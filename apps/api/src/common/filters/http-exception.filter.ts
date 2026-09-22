@@ -19,6 +19,9 @@ const STATUS_CODES: Record<number, string> = {
   [HttpStatus.CONFLICT]: 'CONFLICT',
   [HttpStatus.UNPROCESSABLE_ENTITY]: 'UNPROCESSABLE_ENTITY',
   [HttpStatus.TOO_MANY_REQUESTS]: 'TOO_MANY_REQUESTS',
+  // Multer aborts oversize uploads (books image limit) with 413; keep the
+  // envelope consistent instead of leaking the INTERNAL_ERROR fallback.
+  [HttpStatus.PAYLOAD_TOO_LARGE]: 'PAYLOAD_TOO_LARGE',
 };
 
 const DEFAULT_CODE = 'INTERNAL_ERROR';

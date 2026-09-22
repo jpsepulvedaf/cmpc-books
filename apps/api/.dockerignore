@@ -5,4 +5,6 @@ coverage/
 .env.*
 !.env.example
 .git/
-uploads/
+# uploads/ is intentionally NOT ignored: the folder must exist inside the image
+# (the app creates it at boot anyway; dev compose overrides it via bind mount,
+# and production should mount a persistent volume on /usr/src/app/uploads).
