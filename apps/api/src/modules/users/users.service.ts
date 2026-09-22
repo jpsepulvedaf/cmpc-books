@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import bcrypt from 'bcryptjs';
 import { Prisma } from '../../generated/prisma/client';
 import { ApiException } from '../../common/errors/api.exception';
@@ -21,6 +21,10 @@ export interface ListedUser {
 
 @Injectable()
 export class UsersService {
+  // Structured operational logging with a module context (Nest native Logger —
+  // no extra dependency; key=value English lines with userId, never secrets).
+  private readonly logger = new Logger('UsersService');
+
   constructor(private readonly prisma: PrismaService) {}
 
   /** Paginated, soft-delete-filtered user list with optional search. */
@@ -75,6 +79,8 @@ export class UsersService {
       include: { role: true },
     });
 
+    // Log the identifier only — never the password or hashes.
+    this.logger.log(`User created — userId=${user.id} email=${user.email} role=${user.role.code}`);
     return this.toPublicUser(user);
   }
 
@@ -104,6 +110,7 @@ export class UsersService {
       data,
       include: { role: true },
     });
+    this.logger.log(`User updated — userId=${id} by actorId=${actorId}`);
     return this.toPublicUser(user);
   }
 
@@ -117,6 +124,7 @@ export class UsersService {
       where: { id },
       data: { deletedAt: new Date() },
     });
+    this.logger.log(`User soft-deleted — userId=${id} by actorId=${actorId}`);
   }
 
   private async findActive(id: number) {

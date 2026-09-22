@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { unlink } from 'node:fs/promises';
 import { basename, join } from 'node:path';
 import { Prisma } from '../../generated/prisma/client';
@@ -112,15 +112,26 @@ const csvRow = (book: ListableBook): string =>
  * Book domain service. Every write touches exactly ONE Book row, so single
  * Prisma calls are already atomic and no $transaction is required today.
  *
- * ─── Transaction policy (M5 audit log) ──────────────────────────────
- * When M5 starts writing an AuditLog row next to each BOOK write (create /
- * update / soft-delete / image change), BOTH writes MUST be wrapped in a
- * single `prisma.$transaction(async (tx) => { ... })` so the audit and the
- * domain write commit — or roll back — together. That is the exact spot the
- * transaction is used; adding it before M5 would be speculative.
+ * ─── Audit coupling (M5 audit log) ────────────────────────────────────
+ * The AuditLog row for each BOOK write is produced by the GLOBAL
+ * AuditInterceptor (apps/api/src/modules/audit/audit.interceptor.ts), NOT by
+ * this service, so there is intentionally NO transaction between the domain
+ * write and the audit write: audit is best-effort and fire-and-forget
+ * (docs/architecture.md §12.6 — "audit must never break the business
+ * operation"). Structure-level consistency is what we record and promise;
+ * if this changes later, the exact spot for an explicit `$transaction`
+ * wrapping both writes is inside the interceptor's fire-and-forget path.
  */
 @Injectable()
 export class BooksService {
+  /**
+   * Structured operational logging with a module context (Nest native Logger —
+   * no extra dependency, see M5 logging decision: native Logger chosen over
+   * pino to keep the technical test dependency-free; messages are simple
+   * key=value English with userId/entityId).
+   */
+  private readonly logger = new Logger('BooksService');
+
   /** Relations populated on every book payload for the detail view. */
   private readonly include: Prisma.BookInclude = {
     author: true,
@@ -134,7 +145,7 @@ export class BooksService {
     await this.validateRelations(dto.authorId, dto.publisherId, dto.genreId);
     await this.assertIsbnAvailable(dto.isbn);
 
-    return this.prisma.client.book.create({
+    const book = await this.prisma.client.book.create({
       data: {
         isbn: dto.isbn,
         title: dto.title,
@@ -148,6 +159,9 @@ export class BooksService {
       },
       include: this.include,
     });
+
+    this.logger.log(`Book created — bookId=${book.id} title=${book.title}`);
+    return book;
   }
 
   async getById(id: number) {
@@ -206,6 +220,7 @@ export class BooksService {
     });
 
     const rows = [CSV_HEADERS.join(','), ...books.map(csvRow)];
+    this.logger.log(`Books exported — rows=${books.length}`); // no user data in CSV log
     return `\uFEFF${rows.join('\r\n')}\r\n`;
   }
 
@@ -242,11 +257,14 @@ export class BooksService {
     if (dto.publisherId !== undefined) data.publisherId = dto.publisherId;
     if (dto.genreId !== undefined) data.genreId = dto.genreId;
 
-    return this.prisma.client.book.update({
+    const book = await this.prisma.client.book.update({
       where: { id },
       data,
       include: this.include,
     });
+
+    this.logger.log(`Book updated — bookId=${book.id}`);
+    return book;
   }
 
   /**
@@ -259,6 +277,7 @@ export class BooksService {
       where: { id: book.id },
       data: { deletedAt: new Date() },
     });
+    this.logger.log(`Book soft-deleted — bookId=${book.id}`);
   }
 
   /** Stores a cover for an existing book and returns the refreshed record. */
@@ -282,6 +301,7 @@ export class BooksService {
       data: { imageUrl },
       include: this.include,
     });
+    this.logger.log(`Book image uploaded — bookId=${book.id} bytes=${file.size ?? 0}`);
 
     // Replace semantics: the previous cover is no longer referenced — sweep it.
     if (book.imageUrl) {
@@ -301,6 +321,7 @@ export class BooksService {
       where: { id: book.id },
       data: { imageUrl: null },
     });
+    this.logger.log(`Book image removed — bookId=${book.id}`);
     this.tryRemoveStoredFile(book.imageUrl);
   }
 

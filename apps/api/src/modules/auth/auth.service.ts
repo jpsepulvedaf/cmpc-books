@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import bcrypt from 'bcryptjs';
 import { ApiException } from '../../common/errors/api.exception';
@@ -24,6 +24,10 @@ const INVALID_CREDENTIALS_MESSAGE = 'Invalid email or password';
 
 @Injectable()
 export class AuthService {
+  // Structured operational logging with a module context (Nest native Logger —
+  // no extra dependency; timestamped JSON-ish output, see M5 logging decision).
+  private readonly logger = new Logger('AuthService');
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
@@ -44,10 +48,13 @@ export class AuthService {
       user.deletedAt !== null ||
       !bcrypt.compareSync(dto.password, user.passwordHash)
     ) {
+      // Only the attempted email is logged — never the password.
+      this.logger.warn(`Login failed — email=${dto.email} reason=INVALID_CREDENTIALS`);
       throw new ApiException(401, 'INVALID_CREDENTIALS', INVALID_CREDENTIALS_MESSAGE);
     }
 
     if (!user.isActive) {
+      this.logger.warn(`Login blocked — userId=${user.id} email=${user.email} reason=USER_INACTIVE`);
       throw new ApiException(403, 'USER_INACTIVE', 'User account is inactive');
     }
 
@@ -57,6 +64,10 @@ export class AuthService {
       role: user.role.code,
     };
     const token = await this.jwtService.signAsync(payload);
+
+    this.logger.log(
+      `Login succeeded — userId=${user.id} email=${user.email} role=${user.role.code}`,
+    );
 
     return { token, user: this.toPublicUser(user) };
   }
