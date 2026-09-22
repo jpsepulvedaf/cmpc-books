@@ -1,0 +1,69 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# CMPC Libros — full stack local orchestration
+#   up:   docker compose up --build
+#   down: docker compose down -v   (removes volumes)
+# ─────────────────────────────────────────────────────────────────────────────
+
+name: cmpc-books
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: cmpc-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-cmpc}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cmpc}
+      POSTGRES_DB: ${POSTGRES_DB:-cmpc_books}
+    ports:
+      - '5432:5432'
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-cmpc} -d ${POSTGRES_DB:-cmpc_books}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ./apps/api
+      target: dev
+    container_name: cmpc-api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      API_PORT: 3000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-cmpc}:${POSTGRES_PASSWORD:-cmpc}@db:5432/${POSTGRES_DB:-cmpc_books}?schema=public
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-only}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-12h}
+      SWAGGER_ENABLED: ${SWAGGER_ENABLED:-true}
+    ports:
+      - '3000:3000'
+    volumes:
+      - ./apps/api:/usr/src/app
+      - /usr/src/app/node_modules
+    command: sh -c "npx prisma migrate deploy && npm run start:dev"
+
+  web:
+    build:
+      context: ./apps/web
+      target: dev
+    container_name: cmpc-web
+    restart: unless-stopped
+    depends_on:
+      - api
+    environment:
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:3000}
+    ports:
+      - '5173:5173'
+    volumes:
+      - ./apps/web:/usr/src/app
+      - /usr/src/app/node_modules
+    command: npm run dev
+
+volumes:
+  db-data:

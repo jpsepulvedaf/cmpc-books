@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+.pnp.*
+.history/
+
+# Environment (never commit secrets)
+.env
+.env.*
+!.env.example
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+
+# Test / coverage
+coverage/
+*.log
+
+# IDE / OS
+.idea/
+.vscode/*
+!.vscode/extensions.json
+.DS_Store
+
+# Uploaded images (runtime artifacts)
+apps/api/uploads/
