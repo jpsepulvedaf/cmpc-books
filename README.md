@@ -70,14 +70,11 @@ npm install
 # 2. Entorno (ajusta JWT_SECRET)
 cp .env.example .env        # en la raíz
 
-# 3. Base de datos — elige UNA de estas dos:
-#   Opción A — solo el contenedor PostgreSQL (recomendada):
+# 3. Base de datos — levanta PostgreSQL con Docker (crea la base automáticamente)
 docker compose up -d db
-#     → PostgreSQL publicado en localhost:5433 (usuario/password/db: cmpc/cmpc/cmpc_books)
-
-#   Opción B — PostgreSQL local ya instalado:
-#     crea la base y ajusta DATABASE_URL en .env (p. ej. postgresql://USER:PASS@localhost:5432/cmpc_books)
-createdb cmpc_books          # (o el método que uses: PgAdmin, psql, etc.)
+#     → PostgreSQL publicado en localhost:5433
+#       usuario: cmpc · password: cmpc · base: cmpc_books (todo creado al arrancar)
+#     Comprueba que esté lista: docker compose ps db   (estado "healthy")
 
 # 4. Preparar la base: cliente Prisma + migraciones + datos semilla
 npm run migrate --workspace api
