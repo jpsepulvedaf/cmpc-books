@@ -25,3 +25,6 @@ coverage/
 
 # Uploaded images (runtime artifacts)
 apps/api/uploads/
+
+# Prisma generated client (regenerated on build via prebuild)
+apps/api/src/generated/

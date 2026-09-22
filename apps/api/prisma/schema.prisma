@@ -1,0 +1,108 @@
+// Prisma 7 official setup: generate into the app source and import the typed
+// client from `../generated/prisma/client` (no @prisma/client loader hacks).
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+// Prisma 7: the `url` property moved out of schema files. The connection URL
+// lives in prisma.config.ts (CLI/migrations) and the generated client resolves
+// the connection through the config file at runtime.
+datasource db {
+  provider = "postgresql"
+}
+
+model Role {
+  id          Int      @id @default(autoincrement())
+  code        String   @unique // ADMIN | OPERADOR | CONSULTA
+  name        String
+  description String?
+  users       User[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  passwordHash String
+  fullName     String
+  isActive     Boolean  @default(true)
+  roleId       Int
+  role         Role     @relation(fields: [roleId], references: [id])
+  deletedAt    DateTime?
+  auditLogs    AuditLog[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([roleId])
+}
+
+model Author {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  books     Book[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Publisher {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  books     Book[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Genre {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  books     Book[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Book {
+  id           Int       @id @default(autoincrement())
+  isbn         String?   @unique
+  title        String
+  description  String?
+  price        Decimal   @db.Decimal(10, 2)
+  stock        Int       @default(0)
+  availability String    @default("IN_STOCK") // IN_STOCK | OUT_OF_STOCK
+  imageUrl     String?
+  authorId     Int
+  author       Author    @relation(fields: [authorId], references: [id])
+  publisherId  Int
+  publisher    Publisher @relation(fields: [publisherId], references: [id])
+  genreId      Int
+  genre        Genre     @relation(fields: [genreId], references: [id])
+  deletedAt    DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([authorId])
+  @@index([publisherId])
+  @@index([genreId])
+  @@index([availability])
+  @@index([title])
+}
+
+model AuditLog {
+  id         Int      @id @default(autoincrement())
+  userId     Int?
+  user       User?    @relation(fields: [userId], references: [id])
+  userName   String?
+  userRole   String?
+  action     String   // CREATE | UPDATE | DELETE | LOGIN | EXPORT | ...
+  entityType String   // BOOK | USER | AUTH | ...
+  entityId   String?
+  method     String?
+  path       String?
+  details    Json?
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([entityType, entityId])
+}
