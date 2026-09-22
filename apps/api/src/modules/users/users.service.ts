@@ -1,0 +1,179 @@
+import { Injectable } from '@nestjs/common';
+import bcrypt from 'bcryptjs';
+import { Prisma } from '../../generated/prisma/client';
+import { ApiException } from '../../common/errors/api.exception';
+import { PrismaService } from '../../common/services/prisma.service';
+import { PublicUser } from '../auth/auth.service';
+import { CreateUserDto } from './dto/create-user.dto';
+import { ListUsersQueryDto } from './dto/list-users-query.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
+
+const BCRYPT_ROUNDS = 10;
+
+export interface ListedUser {
+  id: number;
+  email: string;
+  fullName: string;
+  isActive: boolean;
+  roleCode: string;
+  createdAt: Date;
+}
+
+@Injectable()
+export class UsersService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  /** Paginated, soft-delete-filtered user list with optional search. */
+  async list(
+    query: ListUsersQueryDto,
+  ): Promise<{ items: ListedUser[]; total: number; page: number; pageSize: number }> {
+    const { page, pageSize, search } = query;
+    const where = this.buildWhere(search);
+
+    const [users, total] = await Promise.all([
+      this.prisma.client.user.findMany({
+        where,
+        include: { role: true },
+        orderBy: { id: 'asc' },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+      this.prisma.client.user.count({ where }),
+    ]);
+
+    return {
+      items: users.map((u) => this.toListedUser(u)),
+      total,
+      page,
+      pageSize,
+    };
+  }
+
+  async create(dto: CreateUserDto): Promise<PublicUser> {
+    const existing = await this.prisma.client.user.findUnique({
+      where: { email: dto.email },
+    });
+    if (existing) {
+      // Unique email protects the integrity of the table, including soft-deleted rows.
+      throw new ApiException(409, 'EMAIL_EXISTS', 'A user with this email already exists');
+    }
+
+    const role = await this.prisma.client.role.findUnique({ where: { code: dto.roleCode } });
+    if (!role) {
+      throw new ApiException(400, 'INVALID_ROLE', 'Role code is not valid');
+    }
+
+    const passwordHash = bcrypt.hashSync(dto.password, BCRYPT_ROUNDS);
+    const user = await this.prisma.client.user.create({
+      data: {
+        email: dto.email,
+        passwordHash,
+        fullName: dto.fullName,
+        isActive: true,
+        roleId: role.id,
+      },
+      include: { role: true },
+    });
+
+    return this.toPublicUser(user);
+  }
+
+  async update(id: number, dto: UpdateUserDto, actorId: number): Promise<PublicUser> {
+    const target = await this.findActive(id);
+    if (dto.isActive === false && target.id === actorId) {
+      throw new ApiException(
+        409,
+        'SELF_ACTION_FORBIDDEN',
+        'You cannot deactivate your own account',
+      );
+    }
+
+    const data: { fullName?: string; isActive?: boolean; roleId?: number } = {};
+    if (dto.fullName !== undefined) data.fullName = dto.fullName;
+    if (dto.isActive !== undefined) data.isActive = dto.isActive;
+    if (dto.roleCode !== undefined) {
+      const role = await this.prisma.client.role.findUnique({ where: { code: dto.roleCode } });
+      if (!role) {
+        throw new ApiException(400, 'INVALID_ROLE', 'Role code is not valid');
+      }
+      data.roleId = role.id;
+    }
+
+    const user = await this.prisma.client.user.update({
+      where: { id },
+      data,
+      include: { role: true },
+    });
+    return this.toPublicUser(user);
+  }
+
+  /** Soft delete: sets deletedAt so the row survives for audit purposes. */
+  async softDelete(id: number, actorId: number): Promise<void> {
+    const target = await this.findActive(id);
+    if (target.id === actorId) {
+      throw new ApiException(409, 'SELF_ACTION_FORBIDDEN', 'You cannot delete your own account');
+    }
+    await this.prisma.client.user.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+    });
+  }
+
+  private async findActive(id: number) {
+    const user = await this.prisma.client.user.findFirst({
+      where: { id, deletedAt: null },
+    });
+    if (!user) {
+      throw new ApiException(404, 'USER_NOT_FOUND', 'User not found');
+    }
+    return user;
+  }
+
+  private buildWhere(search?: string): Prisma.UserWhereInput {
+    const where: Prisma.UserWhereInput = { deletedAt: null };
+    if (search && search.trim().length > 0) {
+      const term = search.trim();
+      where.OR = [
+        { email: { contains: term, mode: 'insensitive' } },
+        { fullName: { contains: term, mode: 'insensitive' } },
+      ];
+    }
+    return where;
+  }
+
+  private toListedUser(user: {
+    id: number;
+    email: string;
+    fullName: string;
+    isActive: boolean;
+    createdAt: Date;
+    role: { code: string };
+  }): ListedUser {
+    return {
+      id: user.id,
+      email: user.email,
+      fullName: user.fullName,
+      isActive: user.isActive,
+      roleCode: user.role.code,
+      createdAt: user.createdAt,
+    };
+  }
+
+  private toPublicUser(user: {
+    id: number;
+    email: string;
+    fullName: string;
+    isActive: boolean;
+    createdAt: Date;
+    role: { code: string };
+  }): PublicUser {
+    return {
+      id: user.id,
+      email: user.email,
+      fullName: user.fullName,
+      role: user.role.code,
+      isActive: user.isActive,
+      createdAt: user.createdAt,
+    };
+  }
+}
