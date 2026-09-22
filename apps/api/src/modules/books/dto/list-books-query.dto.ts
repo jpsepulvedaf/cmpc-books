@@ -10,14 +10,14 @@ import { BookFiltersQueryDto } from './book-filters-query.dto';
  * (always strings on the wire) are validated as integers.
  */
 export class ListBooksQueryDto extends BookFiltersQueryDto {
-  @ApiPropertyOptional({ example: 1, default: 1, description: '1-based page number' })
+  @ApiPropertyOptional({ example: 1, default: 1, description: 'Número de página (comienza en 1)' })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
   page: number = 1;
 
-  @ApiPropertyOptional({ example: 20, default: 20, description: 'Rows per page, 1..100' })
+  @ApiPropertyOptional({ example: 20, default: 20, description: 'Filas por página, de 1 a 100' })
   @IsOptional()
   @Type(() => Number)
   @IsInt()

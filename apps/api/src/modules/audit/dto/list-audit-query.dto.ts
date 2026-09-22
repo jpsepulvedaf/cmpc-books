@@ -8,14 +8,14 @@ import { IsDate, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
  * free-text search (userName / action / entityType) and a createdAt window.
  */
 export class ListAuditQueryDto {
-  @ApiPropertyOptional({ example: 1, default: 1, description: '1-based page number' })
+  @ApiPropertyOptional({ example: 1, default: 1, description: 'Número de página (comienza en 1)' })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
   page: number = 1;
 
-  @ApiPropertyOptional({ example: 20, default: 20, description: 'Rows per page, 1..100' })
+  @ApiPropertyOptional({ example: 20, default: 20, description: 'Filas por página, de 1 a 100' })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
@@ -24,19 +24,19 @@ export class ListAuditQueryDto {
   pageSize: number = 20;
 
   @ApiPropertyOptional({
-    description: 'Case-insensitive match on userName, action or entityType',
+    description: 'Coincidencia (sin distinguir mayúsculas) en nombre de usuario, acción o tipo de entidad',
   })
   @IsOptional()
   @IsString()
   search?: string;
 
-  @ApiPropertyOptional({ description: 'Only rows with createdAt >= this date (ISO-8601)' })
+  @ApiPropertyOptional({ description: 'Solo filas con createdAt >= esta fecha (ISO-8601)' })
   @IsOptional()
   @Type(() => Date)
   @IsDate()
   from?: Date;
 
-  @ApiPropertyOptional({ description: 'Only rows with createdAt <= this date (ISO-8601)' })
+  @ApiPropertyOptional({ description: 'Solo filas con createdAt <= esta fecha (ISO-8601)' })
   @IsOptional()
   @Type(() => Date)
   @IsDate()

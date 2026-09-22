@@ -16,29 +16,29 @@ import { IsIn, IsInt, IsOptional, IsString, MaxLength, Min } from 'class-validat
 export class BookFiltersQueryDto {
   @ApiPropertyOptional({
     description:
-      'Partial, case-insensitive match on title, ISBN, or author name. ' +
-      'Soft-deleted books are never returned.',
+      'Coincidencia parcial (sin distinguir mayúsculas) en título, ISBN o nombre del autor. ' +
+      'Los libros eliminados de forma lógica nunca se devuelven.',
   })
   @IsOptional()
   @IsString()
   @MaxLength(255)
   search?: string;
 
-  @ApiPropertyOptional({ description: 'Exact Genre id' })
+  @ApiPropertyOptional({ description: 'Id exacto del género' })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
   genreId?: number;
 
-  @ApiPropertyOptional({ description: 'Exact Publisher id' })
+  @ApiPropertyOptional({ description: 'Id exacto de la editorial' })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
   publisherId?: number;
 
-  @ApiPropertyOptional({ description: 'Exact Author id' })
+  @ApiPropertyOptional({ description: 'Id exacto del autor' })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
@@ -47,7 +47,7 @@ export class BookFiltersQueryDto {
 
   @ApiPropertyOptional({
     enum: ['IN_STOCK', 'OUT_OF_STOCK'],
-    description: 'Exact stock availability',
+    description: 'Disponibilidad exacta del stock',
   })
   @IsOptional()
   @IsString()
@@ -57,7 +57,7 @@ export class BookFiltersQueryDto {
   @ApiPropertyOptional({
     example: 'title:asc,publisher.name:desc',
     description:
-      'Comma-separated list of `field:dir` (dir defaults to asc). Allowed fields: ' +
+      'Lista de campos separados por comas con el formato campo:dir (dir por defecto asc). Campos permitidos: ' +
       'title, price, stock, createdAt, availability, author.name, publisher.name, genre.name.',
   })
   @IsOptional()

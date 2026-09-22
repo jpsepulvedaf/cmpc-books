@@ -57,7 +57,7 @@ export class BooksController {
   @Roles('ADMIN')
   @HttpCode(201)
   @ApiOperation({
-    summary: 'Create a book (ADMIN). availability is derived from stock.',
+    summary: 'Crear un libro (solo administradores). La disponibilidad se deriva del stock.',
   })
   create(@Body() dto: CreateBookDto) {
     return this.booksService.create(dto);
@@ -66,31 +66,47 @@ export class BooksController {
 @Get()
   @ApiOperation({
     summary:
-      'List books (any authenticated role) with server-side pagination, ' +
-      'full-text-ish search, exact filters and multi-field sort',
+      'Listar libros (cualquier rol autenticado) con paginación en servidor, búsqueda, ' +
+      'filtros exactos y ordenamiento por varios campos',
   })
   @ApiQuery({
     name: 'search',
     required: false,
-    description: 'Partial, case-insensitive match on title, ISBN or author name',
+    description: 'Coincidencia parcial (sin distinguir mayúsculas) en título, ISBN o nombre del autor',
   })
-  @ApiQuery({ name: 'genreId', required: false, schema: { type: 'integer' } })
-  @ApiQuery({ name: 'publisherId', required: false, schema: { type: 'integer' } })
-  @ApiQuery({ name: 'authorId', required: false, schema: { type: 'integer' } })
+  @ApiQuery({
+    name: 'genreId',
+    required: false,
+    schema: { type: 'integer' },
+    description: 'Filtrar por el id exacto del género',
+  })
+  @ApiQuery({
+    name: 'publisherId',
+    required: false,
+    schema: { type: 'integer' },
+    description: 'Filtrar por el id exacto de la editorial',
+  })
+  @ApiQuery({
+    name: 'authorId',
+    required: false,
+    schema: { type: 'integer' },
+    description: 'Filtrar por el id exacto del autor',
+  })
   @ApiQuery({
     name: 'availability',
     required: false,
     schema: { type: 'string', enum: ['IN_STOCK', 'OUT_OF_STOCK'] },
+    description: 'Filtrar por la disponibilidad exacta del stock',
   })
   @ApiQuery({
     name: 'sort',
     required: false,
     description:
-      'Comma-separated field:dir list, e.g. title:asc,publisher.name:desc. ' +
-      'Allowed: title, price, stock, createdAt, availability, author.name, publisher.name, genre.name',
+      'Lista de campos separados por comas con el formato campo:dir, por ejemplo title:asc,publisher.name:desc. ' +
+      'Permitidos: title, price, stock, createdAt, availability, author.name, publisher.name, genre.name',
   })
-  @ApiQuery({ name: 'page', required: false, schema: { type: 'integer', default: 1 } })
-  @ApiQuery({ name: 'pageSize', required: false, schema: { type: 'integer', default: 20 } })
+  @ApiQuery({ name: 'page', required: false, schema: { type: 'integer', default: 1 }, description: 'Número de página (comienza en 1)' })
+  @ApiQuery({ name: 'pageSize', required: false, schema: { type: 'integer', default: 20 }, description: 'Filas por página, de 1 a 100' })
   list(@Query() query: ListBooksQueryDto) {
     return this.booksService.list(query);
   }
@@ -99,27 +115,42 @@ export class BooksController {
   @Roles('ADMIN', 'OPERADOR')
   @ApiOperation({
     summary:
-      'Export books to CSV (ADMIN/OPERADOR): same filters/search/sort as the ' +
-      'list, unpaginated, capped at 1000 rows. Raw CSV with UTF-8 BOM, bypasses the envelope.',
+      'Exportar libros a CSV (solo administradores y operadores): los mismos filtros, búsqueda y ordenamiento ' +
+      'que el listado, sin paginar y con un máximo de 1000 filas. CSV sin procesar con BOM UTF-8; omite el envoltorio de respuesta.',
   })
   @ApiQuery({
     name: 'search',
     required: false,
-    description: 'Partial, case-insensitive match on title, ISBN or author name',
+    description: 'Coincidencia parcial (sin distinguir mayúsculas) en título, ISBN o nombre del autor',
   })
-  @ApiQuery({ name: 'genreId', required: false, schema: { type: 'integer' } })
-  @ApiQuery({ name: 'publisherId', required: false, schema: { type: 'integer' } })
-  @ApiQuery({ name: 'authorId', required: false, schema: { type: 'integer' } })
+  @ApiQuery({
+    name: 'genreId',
+    required: false,
+    schema: { type: 'integer' },
+    description: 'Filtrar por el id exacto del género',
+  })
+  @ApiQuery({
+    name: 'publisherId',
+    required: false,
+    schema: { type: 'integer' },
+    description: 'Filtrar por el id exacto de la editorial',
+  })
+  @ApiQuery({
+    name: 'authorId',
+    required: false,
+    schema: { type: 'integer' },
+    description: 'Filtrar por el id exacto del autor',
+  })
   @ApiQuery({
     name: 'availability',
     required: false,
     schema: { type: 'string', enum: ['IN_STOCK', 'OUT_OF_STOCK'] },
+    description: 'Filtrar por la disponibilidad exacta del stock',
   })
   @ApiQuery({
     name: 'sort',
     required: false,
-    description:
-      'Comma-separated field:dir list, e.g. title:asc,publisher.name:desc',
+    description: 'Lista de campos separados por comas con el formato campo:dir, por ejemplo title:asc,publisher.name:desc',
   })
   async exportCsv(
     @Query() query: ExportBooksQueryDto,
@@ -145,7 +176,7 @@ export class BooksController {
 
   @Get(':id')
   @ApiOperation({
-    summary: 'Get a book by id (any authenticated role), with author/publisher/genre',
+    summary: 'Obtener un libro por id (cualquier rol autenticado), con autor, editorial y género',
   })
   getById(@Param('id', ParseIntPipe) id: number) {
     return this.booksService.getById(id);
@@ -154,7 +185,7 @@ export class BooksController {
   @Patch(':id')
   @Roles('ADMIN')
   @ApiOperation({
-    summary: 'Partially update a book (ADMIN). Changing stock re-derives availability.',
+    summary: 'Actualizar un libro parcialmente (solo administradores). Cambiar el stock recalcula la disponibilidad.',
   })
   update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateBookDto) {
     return this.booksService.update(id, dto);
@@ -164,7 +195,7 @@ export class BooksController {
   @Roles('ADMIN')
   @HttpCode(204)
   @ApiOperation({
-    summary: 'Soft delete a book (ADMIN): sets deletedAt, keeps the row for audit.',
+    summary: 'Eliminar un libro de forma lógica (solo administradores): establece deletedAt y conserva la fila para auditoría.',
   })
   async remove(@Param('id', ParseIntPipe) id: number): Promise<void> {
     await this.booksService.softDelete(id);
@@ -185,8 +216,8 @@ export class BooksController {
   })
   @ApiOperation({
     summary:
-      'Upload a book cover image (ADMIN). JPEG/PNG/WebP up to 2MB; ' +
-      'returns the book with the new imageUrl.',
+      'Subir la imagen de portada de un libro (solo administradores). JPEG/PNG/WebP de hasta 2 MB; ' +
+      'devuelve el libro con la nueva imageUrl.',
   })
   async uploadImage(
     @Param('id', ParseIntPipe) id: number,
@@ -199,8 +230,7 @@ export class BooksController {
   @Roles('ADMIN')
   @HttpCode(204)
   @ApiOperation({
-    summary:
-      'Remove the book cover (ADMIN): clears imageUrl and deletes the stored file.',
+    summary: 'Eliminar la portada del libro (solo administradores): limpia imageUrl y borra el archivo almacenado.',
   })
   async removeImage(@Param('id', ParseIntPipe) id: number): Promise<void> {
     await this.booksService.removeImage(id);

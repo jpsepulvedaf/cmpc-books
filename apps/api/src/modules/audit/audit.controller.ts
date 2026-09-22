@@ -21,7 +21,7 @@ export class AuditController {
 
   @Get()
   @ApiOperation({
-    summary: 'Paginated audit trail (ADMIN). Optional search + createdAt range.',
+    summary: 'Historial de auditoría paginado (solo administradores). Búsqueda opcional y rango de fechas de creación.',
   })
   list(@Query() query: ListAuditQueryDto) {
     return this.auditService.list(query);
@@ -29,7 +29,7 @@ export class AuditController {
 
   @Get('stats')
   @ApiOperation({
-    summary: 'Audit summary (ADMIN): total, counts by action and by entityType.',
+    summary: 'Resumen de auditoría (solo administradores): total y recuentos por acción y por tipo de entidad.',
   })
   stats() {
     return this.auditService.stats();

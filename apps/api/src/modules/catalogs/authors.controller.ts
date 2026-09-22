@@ -9,7 +9,7 @@ export class AuthorsController {
   constructor(private readonly catalogsService: CatalogsService) {}
 
   @Get()
-  @ApiOperation({ summary: 'List authors (id + name), ordered by name' })
+  @ApiOperation({ summary: 'Listar autores (id + nombre), ordenados por nombre' })
   list() {
     return this.catalogsService.listAuthors();
   }

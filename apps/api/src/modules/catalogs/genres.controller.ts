@@ -9,7 +9,7 @@ export class GenresController {
   constructor(private readonly catalogsService: CatalogsService) {}
 
   @Get()
-  @ApiOperation({ summary: 'List genres (id + name), ordered by name' })
+  @ApiOperation({ summary: 'Listar géneros (id + nombre), ordenados por nombre' })
   list() {
     return this.catalogsService.listGenres();
   }

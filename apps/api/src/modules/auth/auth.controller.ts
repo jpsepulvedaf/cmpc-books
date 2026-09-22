@@ -14,14 +14,14 @@ export class AuthController {
   @Post('login')
   @Public()
   @HttpCode(200)
-  @ApiOperation({ summary: 'Authenticate with email and password, returns a JWT' })
+  @ApiOperation({ summary: 'Autenticar con correo electrónico y contraseña; devuelve un JWT' })
   login(@Body() dto: LoginRequestDto) {
     return this.authService.login(dto);
   }
 
   @Get('me')
   @ApiBearerAuth('JWT')
-  @ApiOperation({ summary: 'Return the complete profile of the authenticated user' })
+  @ApiOperation({ summary: 'Devolver el perfil completo del usuario autenticado' })
   me(@CurrentUser() user: AuthUser) {
     return this.authService.me(user.sub);
   }

@@ -32,20 +32,27 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Get()
-  @ApiOperation({ summary: 'List users (paginated, optional search, soft-deleted excluded)' })
+  @ApiOperation({
+    summary:
+      'Listar usuarios (paginado, con búsqueda opcional; se excluyen los eliminados de forma lógica)',
+  })
   list(@Query() query: ListUsersQueryDto) {
     return this.usersService.list(query);
   }
 
   @Post()
   @HttpCode(201)
-  @ApiOperation({ summary: 'Create a user (unique email, validated password, hashed with bcrypt)' })
+  @ApiOperation({
+    summary: 'Crear un usuario (correo único, contraseña validada y cifrada con bcrypt)',
+  })
   create(@Body() dto: CreateUserDto) {
     return this.usersService.create(dto);
   }
 
   @Patch(':id')
-  @ApiOperation({ summary: 'Update user profile fields (fullName, roleCode, isActive)' })
+  @ApiOperation({
+    summary: 'Actualizar campos del perfil de usuario (fullName, roleCode, isActive)',
+  })
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateUserDto,
@@ -56,7 +63,7 @@ export class UsersController {
 
   @Delete(':id')
   @HttpCode(204)
-  @ApiOperation({ summary: 'Soft delete a user (sets deletedAt)' })
+  @ApiOperation({ summary: 'Eliminar un usuario de forma lógica (establece deletedAt)' })
   async remove(
     @Param('id', ParseIntPipe) id: number,
     @CurrentUser() user: AuthUser,

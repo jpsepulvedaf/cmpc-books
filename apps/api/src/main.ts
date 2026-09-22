@@ -41,7 +41,7 @@ async function bootstrap(): Promise<void> {
   // is NOT registered, so /api/docs does not exist at all.
   if (swaggerEnabled(config)) {
     const options = new DocumentBuilder()
-      .setTitle('CMPC Libros API')
+      .setTitle('API de CMPC Libros')
       .setDescription('Prueba Técnica Full Stack — CMPC Libros')
       .setVersion('1.0.0')
       .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'JWT')

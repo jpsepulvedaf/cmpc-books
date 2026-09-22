@@ -9,7 +9,7 @@ export class PublishersController {
   constructor(private readonly catalogsService: CatalogsService) {}
 
   @Get()
-  @ApiOperation({ summary: 'List publishers (id + name), ordered by name' })
+  @ApiOperation({ summary: 'Listar editoriales (id + nombre), ordenadas por nombre' })
   list() {
     return this.catalogsService.listPublishers();
   }
