@@ -6,8 +6,9 @@ import { PublishersController } from './publishers.controller';
 import { CatalogsService } from './catalogs.service';
 
 /**
- * Read-only light catalogs (authors, publishers, genres). A single module
- * keeps the three trivial read-only resources together without ceremony.
+ * Light catalogs (authors, publishers, genres): reads for any authenticated
+ * role, ADMIN-only create/rename/delete. A single module keeps the three
+ * trivial resources together without ceremony.
  */
 @Module({
   controllers: [AuthorsController, PublishersController, GenresController],
