@@ -239,6 +239,7 @@ erDiagram
 | Ver catálogo (listado/detalle/búsqueda) | ✅ | ✅ | ✅ |
 | Exportar CSV | ✅ | ✅ | ❌ |
 | Mantenedor de libros (crear/actualizar/eliminar) | ✅ | ❌ | ❌ |
+| Mantenedores de catálogo (autores/editoriales/géneros) | ✅ | ❌ | ❌ |
 | Gestión de usuarios (crear/editar/desactivar usuarios, roles) | ✅ | ❌ | ❌ |
 | Ver log de auditoría | ✅ | ❌ | ❌ |
 

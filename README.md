@@ -119,6 +119,7 @@ npm run dev:web             # Web  → http://localhost:5173  (Vite, proxy /api 
 | Catálogo (listar / buscar / detalle) | ✅ | ✅ | ✅ |
 | Exportar CSV | ✅ | ✅ | ❌ |
 | Mantenedor de libros (crear/editar/eliminar) | ✅ | ❌ | ❌ |
+| Mantenedores de catálogo (autores/editoriales/géneros) | ✅ | ❌ | ❌ |
 | Gestión de usuarios | ✅ | ❌ | ❌ |
 | Auditoría de operaciones | ✅ | ❌ | ❌ |
 
@@ -136,8 +137,14 @@ npm run dev:web             # Web  → http://localhost:5173  (Vite, proxy /api 
 
 ### Usuarios (solo Administrador)
 - Crear usuarios con rol y contraseña (mín. 8 caracteres, una mayúscula y un número).
-- **Editar** nombre completo y rol de un usuario existente (el correo no se modifica).
+- **Editar** nombre completo y rol de un usuario existente (el correo no se modifica), y opcionalmente **cambiar la contraseña** (dejando el campo vacío se mantiene la actual).
 - Activar/desactivar y eliminar (soft). Un administrador no puede desactivarse ni eliminarse a sí mismo.
+
+### Mantenedores de catálogo (solo Administrador)
+- Páginas **Autores**, **Editoriales** y **Géneros** (menú superior): crear, renombrar y eliminar entradas del catálogo.
+- **No se puede eliminar** una entrada que tenga libros asociados (error `CATALOG_IN_USE`).
+- Nombres duplicados se rechazan (`NAME_EXISTS`), con búsqueda sin distinguir mayúsculas/minúsculas.
+- **Desde el formulario de libro**: junto a cada selector hay un botón **＋ Agregar** que abre un modal para crear el autor/editorial/género al vuelo, sin perder los datos del libro que estás escribiendo; al guardar, el selector se actualiza al instante y el nuevo registro queda disponible.
 
 ### Auditoría (solo Administrador)
 - Registro de operaciones: inicios de sesión (correctos y fallidos), creación/modificación/eliminación de libros y usuarios, exportaciones.
@@ -318,6 +325,7 @@ Documentación completa e interactiva en Swagger (`/api/docs`). Principales:
 | GET | `/api/books/export` | ADMIN / OPERADOR (CSV) |
 | POST/PATCH/DELETE | `/api/books...`, `/api/books/:id/image` | ADMIN |
 | GET | `/api/authors` · `/api/publishers` · `/api/genres` | autenticado |
+| POST/PATCH/DELETE | `/api/authors...` · `/api/publishers...` · `/api/genres...` | ADMIN |
 | GET/POST/PATCH/DELETE | `/api/users...` | ADMIN |
 | GET | `/api/audit` · `/api/audit/stats` | ADMIN |
 | GET | `/api/health` | público |
