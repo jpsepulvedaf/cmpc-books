@@ -1,3 +1,6 @@
+import { config as loadEnv } from "dotenv";
+import { existsSync } from "node:fs";
+import { resolve } from "node:path";
 import { PrismaClient } from "../src/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import bcrypt from "bcryptjs";
@@ -6,6 +9,15 @@ import bcrypt from "bcryptjs";
 // Idempotent: roles/authors/publishers/genres are upserted by their unique
 // natural key (code/name), the admin user is created only if it does not
 // exist, and books are upserted by ISBN.
+
+// Load the workspace/repo `.env` so a user-defined DATABASE_URL (e.g. a
+// custom host port) is honored; real env vars always win over the file.
+const cwd = process.cwd();
+for (const candidate of [resolve(cwd, ".env"), resolve(cwd, "../../.env")]) {
+  if (existsSync(candidate)) {
+    loadEnv({ path: candidate });
+  }
+}
 
 // Prisma 7 requires a driver adapter at runtime; the URL comes from
 // DATABASE_URL when set, otherwise it follows the compose service `db` on the

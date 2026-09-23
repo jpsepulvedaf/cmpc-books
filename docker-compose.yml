@@ -16,8 +16,10 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cmpc}
       POSTGRES_DB: ${POSTGRES_DB:-cmpc_books}
     ports:
-      # 5433 on host avoids clashing with a local PostgreSQL on 5432
-      - '5433:5432'
+      # Published on the host at ${DB_HOST_PORT} (default 5433) to avoid
+      # clashing with a local PostgreSQL on 5432. Configurable via .env:
+      # set DB_HOST_PORT and DATABASE_URL to the same value when customizing.
+      - '${DB_HOST_PORT:-5433}:5432'
     volumes:
       - db-data:/var/lib/postgresql/data
     healthcheck:
