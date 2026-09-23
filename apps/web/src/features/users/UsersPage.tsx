@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
@@ -16,7 +16,7 @@ import { EmptyState } from '../../shared/EmptyState';
 import { LoadingSpinner } from '../../shared/LoadingSpinner';
 import { PaginationControl } from '../../shared/PaginationControl';
 import { FieldError, FormAlert, getFieldError, fieldErrorId, FormHint } from '../../shared/Form';
-import { IconPlus } from '../../shared/Icons';
+import { IconEdit, IconPlus } from '../../shared/Icons';
 
 const ROLE_TONE: Record<RoleCode, 'role' | 'info' | 'neutral'> = {
   ADMIN: 'role',
@@ -33,6 +33,7 @@ export function UsersPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [showNewUser, setShowNewUser] = useState(false);
+  const [editTarget, setEditTarget] = useState<UserItem | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<UserItem | null>(null);
 
   const users = useQuery({
@@ -83,6 +84,12 @@ export function UsersPage() {
       </header>
 
       {showNewUser ? <NewUserForm onDone={() => setShowNewUser(false)} /> : null}
+      {editTarget ? (
+        <EditUserForm
+          user={editTarget}
+          onDone={() => setEditTarget(null)}
+        />
+      ) : null}
 
       <div className="filter-bar card">
         <div className="field filter-bar__search">
@@ -175,6 +182,15 @@ export function UsersPage() {
                     <button
                       type="button"
                       className="btn btn--ghost btn--sm"
+                      title="Editar usuario"
+                      aria-label={`Editar ${user.fullName}`}
+                      onClick={() => setEditTarget(user)}
+                    >
+                      <IconEdit /> Editar
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn--ghost btn--sm"
                       onClick={() => toggleActive.mutate(user)}
                       title={user.isActive ? 'Desactivar usuario' : 'Activar usuario'}
                     >
@@ -228,6 +244,103 @@ export function UsersPage() {
     </section>
   );
 }
+
+function EditUserForm({ user, onDone }: { user: UserItem; onDone: () => void }) {
+  const { register, handleSubmit, formState, setValues } = useForm<EditUserFormValues>({
+    defaultValues: {
+      fullName: user.fullName ?? '',
+      roleCode: normalizeRoleCode(user.roleCode),
+    },
+    mode: 'onTouched',
+    shouldUseNativeValidation: false,
+  });
+
+  // Ensure the fields hold the values of the user being edited (the form is
+  // created fresh whenever `editTarget` changes, so this is mostly a guard).
+  useEffect(() => {
+    setValues(
+      {
+        fullName: user.fullName ?? '',
+        roleCode: normalizeRoleCode(user.roleCode),
+      },
+      { shouldValidate: false, shouldDirty: false, shouldTouch: false }
+    );
+  }, [user, setValues]);
+
+  const fieldError = (name: keyof EditUserFormValues) => getFieldError(formState.errors, name);
+
+  const update = useMutation({
+    mutationFn: (values: EditUserFormValues) =>
+      updateUser(user.id, {
+        fullName: values.fullName.trim(),
+        roleCode: values.roleCode,
+      }),
+    onSuccess: () => {
+      toast.success('Usuario actualizado correctamente.');
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      onDone();
+    },
+  });
+
+  const apiMessage = update.error ? (update.error as ApiError).userMessage : undefined;
+  const onSubmit = handleSubmit((values) => update.mutate(values));
+
+  return (
+    <form className="card form user-form" noValidate onSubmit={onSubmit}>
+      <FormAlert message={apiMessage} />
+      <h3 className="form-title">Editar usuario — {user.email}</h3>
+
+      <div className="field">
+        <label htmlFor="edit-user-fullName">Nombre completo</label>
+        <input
+          {...register('fullName', { validate: zodField(userSchemas.fullName) })}
+          id="edit-user-fullName"
+          type="text"
+          placeholder="Nombre y apellido"
+          aria-invalid={fieldError('fullName') ? 'true' : undefined}
+          aria-describedby={fieldError('fullName') ? fieldErrorId('fullName') : undefined}
+        />
+        <FieldError name="fullName" message={fieldError('fullName')} />
+      </div>
+
+      <div className="field">
+        <label htmlFor="edit-user-role">Rol</label>
+        <select
+          {...register('roleCode', { validate: zodField(userSchemas.roleCode) })}
+          id="edit-user-role"
+          aria-invalid={fieldError('roleCode') ? 'true' : undefined}
+          aria-describedby={fieldError('roleCode') ? fieldErrorId('roleCode') : undefined}
+        >
+          <option value="">Selecciona un rol…</option>
+          {ROLE_OPTIONS.map((role) => (
+            <option key={role.value} value={role.value}>
+              {role.label}
+            </option>
+          ))}
+        </select>
+        <FieldError name="roleCode" message={fieldError('roleCode')} />
+      </div>
+
+      <div className="form-actions">
+        <button type="button" className="btn btn--ghost" onClick={onDone}>
+          Cancelar
+        </button>
+        <button
+          type="submit"
+          className="btn btn--primary"
+          disabled={!formState.isValid || update.isPending}
+        >
+          {update.isPending ? 'Guardando…' : 'Guardar cambios'}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+type EditUserFormValues = {
+  fullName: string;
+  roleCode: string;
+};
 
 function NewUserForm({ onDone }: { onDone: () => void }) {
   const { register, handleSubmit, formState } = useForm<UserFormValues>({

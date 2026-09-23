@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { setSession } from '../../lib/session';
@@ -84,6 +84,33 @@ describe('UsersPage', () => {
       expect(mocks.updateUser).toHaveBeenCalledWith(1, { isActive: false })
     );
     expect(mocks.toast.success).toHaveBeenCalledWith('Usuario desactivado.');
+  });
+
+  it('edits a user full name and role through the edit form', async () => {
+    renderUsers();
+    await screen.findByText('Ana Admin');
+
+    screen.getByRole('button', { name: 'Editar Ana Admin' }).click();
+
+    // The edit form mounts right after the click; wait for its submit button.
+    const saveButton = await screen.findByRole('button', { name: 'Guardar cambios' });
+    const nameInput = screen.getByLabelText('Nombre completo');
+    fireEvent.change(nameInput, { target: { value: 'Ana Administradora' } });
+    fireEvent.blur(nameInput);
+    fireEvent.change(screen.getByLabelText('Rol'), { target: { value: 'OPERADOR' } });
+
+    saveButton.click();
+
+    await vi.waitFor(() =>
+      expect(mocks.updateUser).toHaveBeenCalledWith(1, {
+        fullName: 'Ana Administradora',
+        roleCode: 'OPERADOR',
+      })
+    );
+    expect(mocks.toast.success).toHaveBeenCalledWith('Usuario actualizado correctamente.');
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: 'Guardar cambios' })).toBeNull()
+    );
   });
 
   it('shows the empty state when there are no matches', async () => {
