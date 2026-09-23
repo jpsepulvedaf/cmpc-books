@@ -49,7 +49,7 @@ afterEach(() => {
 describe('LoginPage', () => {
   it('renders the login screen in Spanish', () => {
     renderLogin();
-    expect(screen.getByRole('heading', { name: 'CMPC Libros' })).toBeInTheDocument();
+    expect(screen.getByAltText('CMPC Libros')).toBeInTheDocument();
     expect(screen.getByText('Gestión del catálogo bibliográfico')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Iniciar sesión' })).toBeInTheDocument();
   });

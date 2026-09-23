@@ -47,20 +47,13 @@ export function LoginPage() {
     <div className="login-screen">
       <div className="card login-card">
         <div className="login-brand" aria-label="CMPC Libros">
-          <svg
-            width="44"
-            height="44"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            aria-hidden="true"
-          >
-            <rect x="4" y="5" width="7" height="15" rx="2" />
-            <rect x="13" y="3" width="7" height="17" rx="2" />
-            <path d="M13 20 L19 20 M6 6 L10 6" />
-          </svg>
-          <h1>CMPC Libros</h1>
+          <img
+            src="/logo.png"
+            alt="CMPC Libros"
+            className="login-logo"
+            width={180}
+            height={90}
+          />
           <p className="login-subtitle">Gestión del catálogo bibliográfico</p>
         </div>
 

@@ -6,7 +6,7 @@ import { clearSession, getSession } from '../lib/session';
 import { roleLabel } from '../lib/format';
 import { exportBooksCsv, triggerCsvDownload } from '../features/books/api';
 import { Badge } from '../shared/Badge';
-import { IconBooks, IconDownload, IconMenu, IconClose } from '../shared/Icons';
+import { IconDownload, IconMenu, IconClose } from '../shared/Icons';
 
 export function AppLayout() {
   const navigate = useNavigate();
@@ -49,12 +49,7 @@ export function AppLayout() {
     <div className="app-shell">
       <header className="navbar">
         <NavLink to="/libros" className="navbar__brand" aria-label="CMPC Libros — inicio">
-          <span className="navbar__logo">
-            <IconBooks size={24} />
-          </span>
-          <span className="navbar__brand-text">
-            CMPC <strong>Libros</strong>
-          </span>
+          <img src="/logo.png" alt="CMPC Libros" className="navbar__brand-logo" height={34} />
         </NavLink>
 
         <nav className="navbar__links" aria-label="Navegación principal">

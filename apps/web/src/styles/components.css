@@ -189,15 +189,10 @@
   color: var(--color-primary);
 }
 
-.navbar__logo {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
+.navbar__brand-logo {
   height: 34px;
-  border-radius: 9px;
-  background: var(--color-primary-soft);
-  color: var(--color-primary);
+  width: auto;
+  object-fit: contain;
 }
 
 .navbar__brand-text strong {
@@ -849,14 +844,12 @@
   margin-bottom: 22px;
 }
 
-.login-brand svg {
-  color: var(--color-primary);
-}
-
-.login-brand h1 {
-  margin: 0;
-  font-size: 1.5rem;
-  font-weight: 800;
+.login-logo {
+  max-width: 240px;
+  max-height: 120px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
 }
 
 .login-subtitle {
