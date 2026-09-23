@@ -127,7 +127,7 @@ npm run dev:web             # Web  → http://localhost:5173  (Vite, proxy /api 
 - **Filtros**: género, editorial, autor y disponibilidad (Disponible / Agotado).
 - **Ordenamiento**: clic en una columna ordena asc/desc (▲▼); **Mayús + clic** añade un segundo criterio (orden multi-campo).
 - **Paginación**: lado del servidor; selector de 10/20/50 resultados.
-- **Exportar CSV**: descarga `libros_YYYY-MM-DD.csv` con los mismos filtros aplicados (Administrador/Operador).
+- **Exportar CSV**: descarga `libros_YYYY-MM-DD.csv` con los mismos filtros aplicados (Administrador/Operador). El botón está disponible en la vista **Libros** (tanto en la barra superior como dentro del listado), ya que una exportación con otros módulos no tendría sentido.
 
 ### Mantenedor de libros (solo Administrador)
 - **Nuevo / Editar**: validación reactiva por campo (título, ISBN, precio decimal > 0, stock entero ≥ 0, autor/editorial/género).
@@ -136,6 +136,7 @@ npm run dev:web             # Web  → http://localhost:5173  (Vite, proxy /api 
 
 ### Usuarios (solo Administrador)
 - Crear usuarios con rol y contraseña (mín. 8 caracteres, una mayúscula y un número).
+- **Editar** nombre completo y rol de un usuario existente (el correo no se modifica).
 - Activar/desactivar y eliminar (soft). Un administrador no puede desactivarse ni eliminarse a sí mismo.
 
 ### Auditoría (solo Administrador)

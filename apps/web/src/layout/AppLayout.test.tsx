@@ -11,12 +11,14 @@ const mocks = vi.hoisted(() => ({
   exportBooksCsv: vi.fn(),
   triggerCsvDownload: vi.fn(),
   toast: { success: vi.fn(), error: vi.fn() },
+  location: { pathname: '/libros' },
 }));
 
 vi.mock('react-router-dom', () => ({
   NavLink: ({ to, children }: { to: string; children: ReactNode }) => <a href={to}>{children}</a>,
   Outlet: () => null,
   useNavigate: () => mocks.navigate,
+  useLocation: () => mocks.location,
 }));
 vi.mock('sonner', () => ({ toast: mocks.toast }));
 vi.mock('../features/books/api', () => ({
@@ -34,6 +36,7 @@ const operadorUser = { id: 8, email: 'ope@cmpc.libros', fullName: 'Oscar Operado
 beforeEach(() => {
   localStorage.clear();
   vi.clearAllMocks();
+  mocks.location = { pathname: '/libros' };
 });
 
 afterEach(() => {
@@ -62,6 +65,14 @@ describe('AppLayout', () => {
     expect(screen.queryByText('Auditoría')).toBeNull();
     expect(screen.getByText('Operador')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Exportar CSV' })).toBeInTheDocument();
+  });
+
+  it('hides the CSV export outside the /libros section', () => {
+    setSession('tok', adminUser);
+    mocks.location = { pathname: '/usuarios' };
+    renderLayout();
+
+    expect(screen.queryByRole('button', { name: 'Exportar CSV' })).toBeNull();
   });
 
   it('falls back to a generic label without a session', () => {

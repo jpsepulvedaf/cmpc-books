@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { setUnauthorizedHandler, ApiError } from '../lib/api';
 import { clearSession, getSession } from '../lib/session';
@@ -10,6 +10,7 @@ import { IconDownload, IconMenu, IconClose } from '../shared/Icons';
 
 export function AppLayout() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
 
@@ -25,6 +26,9 @@ export function AppLayout() {
   const role = user?.role ?? 'CONSULTA';
   const isAdmin = role === 'ADMIN';
   const canExport = isAdmin || role === 'OPERADOR';
+  // The catalog CSV export only makes sense while browsing the books section;
+  // hide it anywhere else (users/audit views have nothing to do with it).
+  const exportVisible = canExport && location.pathname.startsWith('/libros');
 
   const logout = () => {
     clearSession();
@@ -66,7 +70,7 @@ export function AppLayout() {
               Auditoría
             </NavLink>
           ) : null}
-          {canExport ? (
+          {exportVisible ? (
             <button
               type="button"
               className="btn btn--ghost btn--sm"
@@ -123,7 +127,7 @@ export function AppLayout() {
               Auditoría
             </NavLink>
           ) : null}
-          {canExport ? (
+          {exportVisible ? (
             <button
               type="button"
               className="btn btn--ghost btn--sm btn--block"
