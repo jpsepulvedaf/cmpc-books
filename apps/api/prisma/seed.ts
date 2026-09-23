@@ -8,10 +8,11 @@ import bcrypt from "bcryptjs";
 // exist, and books are upserted by ISBN.
 
 // Prisma 7 requires a driver adapter at runtime; the URL comes from
-// DATABASE_URL when set, otherwise it falls back to the local dev database.
+// DATABASE_URL when set, otherwise it follows the compose service `db` on the
+// host-published port 5433 (single supported local path).
 const connectionString =
   process.env.DATABASE_URL ??
-  "postgresql://cmpc:cmpc@localhost:5432/cmpc_books?schema=public";
+  "postgresql://cmpc:cmpc@localhost:5433/cmpc_books?schema=public";
 
 const prisma = new PrismaClient({
   adapter: new PrismaPg({ connectionString }),

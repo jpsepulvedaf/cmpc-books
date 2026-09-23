@@ -3,9 +3,11 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../../generated/prisma/client';
 
-// Local dev fallback, mirrors prisma/seed.ts. Overridden by DATABASE_URL.
+// Local dev fallback, mirrors prisma/seed.ts and prisma.config.ts: the
+// Dockerized PostgreSQL (compose `db`, host port 5433). Overridden by
+// DATABASE_URL.
 const LOCAL_DATABASE_URL =
-  'postgresql://cmpc:cmpc@localhost:5432/cmpc_books?schema=public';
+  'postgresql://cmpc:cmpc@localhost:5433/cmpc_books?schema=public';
 
 /**
  * Shared Prisma access point. A single PrismaClient instance (Prisma 7 driver
