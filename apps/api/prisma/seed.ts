@@ -144,6 +144,10 @@ async function main() {
         price: book.price,
         stock: book.stock,
         availability,
+        // Demo books have no cover: reset any legacy imageUrl left over from
+        // previous runs on a reused volume, so listings never show broken
+        // image links after re-seeding.
+        imageUrl: null,
         authorId: authorIds.get(book.author)!,
         publisherId: publisherIds.get(book.publisher)!,
         genreId: genreIds.get(book.genre)!,
