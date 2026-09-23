@@ -29,6 +29,8 @@ describe('UsersService (unit)', () => {
         update: Mock;
       };
       role: { findUnique: Mock };
+      auditLog: { create: Mock };
+      $transaction: Mock;
     };
   } = {
     client: {
@@ -41,6 +43,8 @@ describe('UsersService (unit)', () => {
         update: vi.fn(),
       },
       role: { findUnique: vi.fn() },
+      auditLog: { create: vi.fn() },
+      $transaction: vi.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn(prisma.client)),
     },
   };
 
@@ -181,10 +185,12 @@ describe('UsersService (unit)', () => {
   });
 
   describe('update', () => {
+    const actor = { sub: 1, email: 'admin@cmpc.libros', role: 'ADMIN' };
+    const actorSelf = { sub: 5, email: 'ana@cmpc.libros', role: 'ADMIN' };
     it('returns 404 USER_NOT_FOUND when the target does not exist or is deleted', async () => {
       prisma.client.user.findFirst.mockResolvedValue(null);
 
-      const result = await outcome(service.update(99, { fullName: 'X' }, 1));
+      const result = await outcome(service.update(99, { fullName: 'X' }, actor));
 
       expect(result.ok).toBe(false);
       expect(result.error!.getStatus()).toBe(404);
@@ -194,7 +200,7 @@ describe('UsersService (unit)', () => {
     it('forbids deactivating your own account with 409 SELF_ACTION_FORBIDDEN', async () => {
       prisma.client.user.findFirst.mockResolvedValue({ ...userRow, id: 5 });
 
-      const result = await outcome(service.update(5, { isActive: false }, 5));
+      const result = await outcome(service.update(5, { isActive: false }, actorSelf));
 
       expect(result.ok).toBe(false);
       expect(result.error!.getStatus()).toBe(409);
@@ -206,7 +212,7 @@ describe('UsersService (unit)', () => {
       prisma.client.user.findFirst.mockResolvedValue(userRow);
       prisma.client.role.findUnique.mockResolvedValue(null);
 
-      const result = await outcome(service.update(7, { roleCode: 'SUPERUSER' }, 1));
+      const result = await outcome(service.update(7, { roleCode: 'SUPERUSER' }, actor));
 
       expect(result.ok).toBe(false);
       expect(result.error!.code).toBe('INVALID_ROLE');
@@ -217,7 +223,7 @@ describe('UsersService (unit)', () => {
       prisma.client.role.findUnique.mockResolvedValue({ id: 3, code: 'CONSULTA' });
       prisma.client.user.update.mockResolvedValue({ ...userRow, role: { id: 3, code: 'CONSULTA', name: 'Consulta' } });
 
-      const result = await outcome(service.update(7, { fullName: 'Maria R.', roleCode: 'CONSULTA' }, 1));
+      const result = await outcome(service.update(7, { fullName: 'Maria R.', roleCode: 'CONSULTA' }, actor));
 
       expect(result.ok).toBe(true);
       expect(prisma.client.user.update).toHaveBeenCalledWith(
@@ -235,7 +241,7 @@ describe('UsersService (unit)', () => {
       prisma.client.user.update.mockResolvedValue({ ...userRow, role: { id: 1, code: 'ADMIN', name: 'Administrador' } });
 
       const result = await outcome(
-        service.update(7, { fullName: 'Maria R.', password: 'NuevaClave123' }, 1),
+        service.update(7, { fullName: 'Maria R.', password: 'NuevaClave123' }, actor),
       );
 
       expect(result.ok).toBe(true);
@@ -248,7 +254,7 @@ describe('UsersService (unit)', () => {
       prisma.client.user.findFirst.mockResolvedValue(userRow);
       prisma.client.user.update.mockResolvedValue({ ...userRow, role: { id: 1, code: 'ADMIN', name: 'Administrador' } });
 
-      const result = await outcome(service.update(7, { fullName: 'Maria R.', password: '   ' }, 1));
+      const result = await outcome(service.update(7, { fullName: 'Maria R.', password: '   ' }, actor));
 
       expect(result.ok).toBe(true);
       const updateArg = prisma.client.user.update.mock.calls[0][0];

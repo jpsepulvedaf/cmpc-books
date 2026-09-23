@@ -58,7 +58,7 @@ export class UsersController {
     @Body() dto: UpdateUserDto,
     @CurrentUser() user: AuthUser,
   ) {
-    return this.usersService.update(id, dto, user.sub);
+    return this.usersService.update(id, dto, user);
   }
 
   @Delete(':id')

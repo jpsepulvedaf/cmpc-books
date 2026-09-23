@@ -56,13 +56,14 @@ describe('UsersController (unit)', () => {
     expect(result).toEqual({ id: 1 });
   });
 
-  it('PATCH /:id delegates id, body and the actor sub', async () => {
+  it('PATCH /:id delegates id, body and the actor', async () => {
     const dto = { fullName: 'Maria R.' };
     service.update.mockResolvedValue({ id: 3 });
+    const actor = { sub: 9, email: 'admin@cmpc.libros', role: 'ADMIN' };
 
-    await controller.update(3, dto, { sub: 9, email: 'admin@cmpc.libros', role: 'ADMIN' });
+    await controller.update(3, dto, actor);
 
-    expect(service.update).toHaveBeenCalledWith(3, dto, 9);
+    expect(service.update).toHaveBeenCalledWith(3, dto, actor);
   });
 
   it('DELETE /:id delegates the parsed id and the actor sub to softDelete', async () => {

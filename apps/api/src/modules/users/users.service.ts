@@ -4,6 +4,7 @@ import { Prisma } from '../../generated/prisma/client';
 import { ApiException } from '../../common/errors/api.exception';
 import { PrismaService } from '../../common/services/prisma.service';
 import { PublicUser } from '../auth/auth.service';
+import { AuthUser } from '../../common/types/auth-user';
 import { CreateUserDto } from './dto/create-user.dto';
 import { ListUsersQueryDto } from './dto/list-users-query.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -91,9 +92,13 @@ export class UsersService {
     return this.toPublicUser(user);
   }
 
-  async update(id: number, dto: UpdateUserDto, actorId: number): Promise<PublicUser> {
+  async update(
+    id: number,
+    dto: UpdateUserDto,
+    actor: AuthUser,
+  ): Promise<PublicUser> {
     const target = await this.findActive(id);
-    if (dto.isActive === false && target.id === actorId) {
+    if (dto.isActive === false && target.id === actor.sub) {
       throw new ApiException(
         409,
         'SELF_ACTION_FORBIDDEN',
@@ -101,28 +106,48 @@ export class UsersService {
       );
     }
 
-    const data: { fullName?: string; isActive?: boolean; roleId?: number; passwordHash?: string } = {};
-    if (dto.fullName !== undefined) data.fullName = dto.fullName;
-    if (dto.isActive !== undefined) data.isActive = dto.isActive;
-    if (dto.roleCode !== undefined) {
-      const role = await this.prisma.client.role.findUnique({ where: { code: dto.roleCode } });
-      if (!role) {
-        throw new ApiException(400, 'INVALID_ROLE', 'Role code is not valid');
+    // ── Critical operation: transactional integrity ─────────────────────────
+    // Changing the profile (fullName/role) plus an optional password reset are
+    // written together with the audit trail in ONE database transaction, so a
+    // mid-flight failure cannot leave the user row updated without its audit
+    // record (or worse, a password hash written but the profile not).
+    return this.prisma.client.$transaction(async (tx) => {
+      const data: { fullName?: string; isActive?: boolean; roleId?: number; passwordHash?: string } = {};
+      if (dto.fullName !== undefined) data.fullName = dto.fullName;
+      if (dto.isActive !== undefined) data.isActive = dto.isActive;
+      if (dto.roleCode !== undefined) {
+        const role = await tx.role.findUnique({ where: { code: dto.roleCode } });
+        if (!role) {
+          throw new ApiException(400, 'INVALID_ROLE', 'Role code is not valid');
+        }
+        data.roleId = role.id;
       }
-      data.roleId = role.id;
-    }
-    // Empty string means "keep the current password"; only rehash a real one.
-    if (dto.password !== undefined && dto.password.trim().length > 0) {
-      data.passwordHash = bcrypt.hashSync(dto.password, BCRYPT_ROUNDS);
-    }
+      // Empty string means "keep the current password"; only rehash a real one.
+      if (dto.password !== undefined && dto.password.trim().length > 0) {
+        data.passwordHash = bcrypt.hashSync(dto.password, BCRYPT_ROUNDS);
+      }
 
-    const user = await this.prisma.client.user.update({
-      where: { id },
-      data,
-      include: { role: true },
+      const user = await tx.user.update({
+        where: { id },
+        data,
+        include: { role: true },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          action: 'UPDATE',
+          entityType: 'USER',
+          entityId: String(id),
+          user: { connect: { id: actor.sub } },
+          userName: actor.email,
+          userRole: actor.role,
+          details: { changedFields: Object.keys(data) },
+        },
+      });
+
+      this.logger.log(`User updated — userId=${id} by actorId=${actor.sub} (transactional audit)`);
+      return this.toPublicUser(user);
     });
-    this.logger.log(`User updated — userId=${id} by actorId=${actorId}`);
-    return this.toPublicUser(user);
   }
 
   /** Soft delete: sets deletedAt so the row survives for audit purposes. */
