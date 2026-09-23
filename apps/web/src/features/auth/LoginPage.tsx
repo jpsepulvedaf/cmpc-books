@@ -51,10 +51,9 @@ export function LoginPage() {
             src="/logo.png"
             alt="CMPC Libros"
             className="login-logo"
-            width={180}
-            height={90}
+            width={240}
+            height={120}
           />
-          <p className="login-subtitle">Gestión del catálogo bibliográfico</p>
         </div>
 
         <form className="form" noValidate onSubmit={onSubmit}>
