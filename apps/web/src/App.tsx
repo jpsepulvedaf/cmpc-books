@@ -12,6 +12,7 @@ import { BookDetailPage } from './features/books/BookDetailPage';
 import { BookFormPage } from './features/books/BookFormPage';
 import { BooksPage } from './features/books/BooksPage';
 import { UsersPage } from './features/users/UsersPage';
+import { CatalogCrudPage } from './features/catalogs/CatalogCrudPage';
 import './styles/global.css';
 
 /** Route guard: requires an authenticated session, optionally restricted by role. */
@@ -61,6 +62,30 @@ const router = createBrowserRouter([
         element: (
           <Guard roles={['ADMIN']}>
             <UsersPage />
+          </Guard>
+        ),
+      },
+      {
+        path: '/autores',
+        element: (
+          <Guard roles={['ADMIN']}>
+            <CatalogCrudPage kind="authors" />
+          </Guard>
+        ),
+      },
+      {
+        path: '/editoriales',
+        element: (
+          <Guard roles={['ADMIN']}>
+            <CatalogCrudPage kind="publishers" />
+          </Guard>
+        ),
+      },
+      {
+        path: '/generos',
+        element: (
+          <Guard roles={['ADMIN']}>
+            <CatalogCrudPage kind="genres" />
           </Guard>
         ),
       },

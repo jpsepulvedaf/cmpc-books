@@ -181,6 +181,14 @@ export const editUserPasswordSchema = z
     'La contraseña debe tener al menos 8 caracteres, una mayúscula y un número',
   );
 
+// ── Catalog form (authors / publishers / genres) ─────────────────────────────
+
+export const catalogNameSchema = z
+  .string()
+  .trim()
+  .min(1, 'El nombre es obligatorio')
+  .max(120, 'El nombre no puede superar los 120 caracteres');
+
 // ── Auth login payload ───────────────────────────────────────────────────────
 
 export function toLoginPayload(values: LoginFormValues): { email: string; password: string } {

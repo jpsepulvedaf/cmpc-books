@@ -22,6 +22,11 @@ describe('translateErrorCode', () => {
     expect(translateErrorCode('SELF_ACTION_FORBIDDEN')).toBe(
       'No puedes realizar esta acción sobre tu propia cuenta.'
     );
+    expect(translateErrorCode('NAME_EXISTS')).toBe('Ya existe un registro con este nombre.');
+    expect(translateErrorCode('CATALOG_NOT_FOUND')).toBe('El registro del catálogo no existe.');
+    expect(translateErrorCode('CATALOG_IN_USE')).toBe(
+      'No se puede eliminar: hay libros asociados a este registro.'
+    );
   });
 
   it('returns undefined for unknown codes so callers can fall back', () => {
@@ -56,6 +61,9 @@ describe('error message constants', () => {
       'INVALID_IMAGE',
       'VALIDATION_FAILED',
       'INTERNAL_ERROR',
+      'NAME_EXISTS',
+      'CATALOG_NOT_FOUND',
+      'CATALOG_IN_USE',
     ];
     for (const code of expectedCodes) {
       expect(ERROR_MESSAGES[code], code).toBeTruthy();

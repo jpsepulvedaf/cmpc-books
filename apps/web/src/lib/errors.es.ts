@@ -14,6 +14,9 @@ export const ERROR_MESSAGES: Readonly<Record<string, string>> = {
   INVALID_IMAGE: 'La imagen no es válida (JPEG, PNG o WebP, máx. 2 MB).',
   VALIDATION_FAILED: 'Revisa los campos marcados.',
   INTERNAL_ERROR: 'Error del servidor. Inténtalo de nuevo.',
+  NAME_EXISTS: 'Ya existe un registro con este nombre.',
+  CATALOG_NOT_FOUND: 'El registro del catálogo no existe.',
+  CATALOG_IN_USE: 'No se puede eliminar: hay libros asociados a este registro.',
 };
 
 export const GENERIC_ERROR_MESSAGE = 'Ha ocurrido un error inesperado';

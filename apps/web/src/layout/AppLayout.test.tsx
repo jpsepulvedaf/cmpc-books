@@ -35,23 +35,29 @@ afterEach(() => {
 });
 
 describe('AppLayout', () => {
-  it('shows Libros, Usuarios and Auditoría links for an ADMIN', () => {
+  it('shows Libros, Usuarios, Auditoría and catalog links for an ADMIN', () => {
     setSession('tok', adminUser);
     renderLayout();
 
     expect(screen.getAllByText('Libros').length).toBeGreaterThan(0);
     expect(screen.queryByText('Usuarios')).not.toBeNull();
+    expect(screen.queryByText('Autores')).not.toBeNull();
+    expect(screen.queryByText('Editoriales')).not.toBeNull();
+    expect(screen.queryByText('Géneros')).not.toBeNull();
     expect(screen.queryByText('Auditoría')).not.toBeNull();
     expect(screen.getByText('Ana Admin')).toBeInTheDocument();
     expect(screen.getByText('Administrador')).toBeInTheDocument();
   });
 
-  it('hides Usuarios and Auditoría for an OPERADOR', () => {
+  it('hides Usuarios, catalog links and Auditoría for an OPERADOR', () => {
     setSession('tok', operadorUser);
     renderLayout();
 
     expect(screen.getAllByText('Libros').length).toBeGreaterThan(0);
     expect(screen.queryByText('Usuarios')).toBeNull();
+    expect(screen.queryByText('Autores')).toBeNull();
+    expect(screen.queryByText('Editoriales')).toBeNull();
+    expect(screen.queryByText('Géneros')).toBeNull();
     expect(screen.queryByText('Auditoría')).toBeNull();
     expect(screen.getByText('Operador')).toBeInTheDocument();
   });
@@ -68,6 +74,7 @@ describe('AppLayout', () => {
     renderLayout();
     expect(screen.getByText('Consulta')).toBeInTheDocument();
     expect(screen.queryByText('Usuarios')).toBeNull();
+    expect(screen.queryByText('Autores')).toBeNull();
   });
 
   it('logs out: clears the session and navigates to /login', () => {

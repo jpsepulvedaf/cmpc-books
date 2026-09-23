@@ -44,6 +44,21 @@ export function AppLayout() {
             </NavLink>
           ) : null}
           {isAdmin ? (
+            <NavLink to="/autores" className={({ isActive }) => (isActive ? 'nav-link nav-link--active' : 'nav-link')}>
+              Autores
+            </NavLink>
+          ) : null}
+          {isAdmin ? (
+            <NavLink to="/editoriales" className={({ isActive }) => (isActive ? 'nav-link nav-link--active' : 'nav-link')}>
+              Editoriales
+            </NavLink>
+          ) : null}
+          {isAdmin ? (
+            <NavLink to="/generos" className={({ isActive }) => (isActive ? 'nav-link nav-link--active' : 'nav-link')}>
+              Géneros
+            </NavLink>
+          ) : null}
+          {isAdmin ? (
             <NavLink to="/auditoria" className={({ isActive }) => (isActive ? 'nav-link nav-link--active' : 'nav-link')}>
               Auditoría
             </NavLink>
@@ -87,6 +102,21 @@ export function AppLayout() {
           {isAdmin ? (
             <NavLink to="/usuarios" className="nav-link" onClick={() => setMenuOpen(false)}>
               Usuarios
+            </NavLink>
+          ) : null}
+          {isAdmin ? (
+            <NavLink to="/autores" className="nav-link" onClick={() => setMenuOpen(false)}>
+              Autores
+            </NavLink>
+          ) : null}
+          {isAdmin ? (
+            <NavLink to="/editoriales" className="nav-link" onClick={() => setMenuOpen(false)}>
+              Editoriales
+            </NavLink>
+          ) : null}
+          {isAdmin ? (
+            <NavLink to="/generos" className="nav-link" onClick={() => setMenuOpen(false)}>
+              Géneros
             </NavLink>
           ) : null}
           {isAdmin ? (
