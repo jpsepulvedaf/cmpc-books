@@ -165,6 +165,36 @@ describe('CatalogCrudPage', () => {
     expect(mocks.toast.success).toHaveBeenCalledWith('Autor actualizado correctamente.');
   });
 
+  it('closes the edit form when switching to another maintainer (kind change resets state)', async () => {
+    // A real navigation from /autores to /generos reuses the SAME component
+    // instance but with a different `kind`; the open edit form must not leak.
+    mocks.listAuthors.mockResolvedValue(authors);
+    mocks.listGenres.mockResolvedValue([{ id: 1, name: 'Ficción' }]);
+
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const rerender = render(
+      <QueryClientProvider client={client}>
+        <CatalogCrudPage kind="authors" />
+      </QueryClientProvider>
+    );
+    await screen.findByText('Jorge Luis Borges');
+    fireEvent.click(screen.getByRole('button', { name: 'Editar Jorge Luis Borges' }));
+    expect(screen.getByLabelText('Nombre')).toHaveValue('Jorge Luis Borges');
+
+    // Simulate navigating to another maintainer route (same component, new kind).
+    rerender.rerender(
+      <QueryClientProvider client={client}>
+        <CatalogCrudPage kind="genres" />
+      </QueryClientProvider>
+    );
+
+    await screen.findByText('Ficción');
+    expect(screen.getByRole('heading', { name: 'Géneros' })).toBeInTheDocument();
+    // The edit form of the author must be closed, not carried over.
+    expect(screen.queryByLabelText('Nombre')).toBeNull();
+    expect(screen.queryByRole('heading', { name: /Editar el autor/ })).toBeNull();
+  });
+
   it('deletes an item after confirming in the dialog', async () => {
     mocks.listAuthors.mockResolvedValue(authors);
     mocks.deleteAuthor.mockResolvedValue(undefined);

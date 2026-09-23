@@ -543,6 +543,11 @@
   margin-bottom: 20px;
 }
 
+/* Spacing between the inline maintainer form and the table below it. */
+.catalog-form {
+  margin-bottom: 24px;
+}
+
 .input-with-icon {
   position: relative;
   display: flex;

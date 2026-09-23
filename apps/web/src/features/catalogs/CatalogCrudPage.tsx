@@ -2,7 +2,7 @@
 // publishers, genres). One component drives the three routes; the per-kind
 // labels and API grouping come from KIND_CONFIG and catalogGroups.
 
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
@@ -99,6 +99,19 @@ export function CatalogCrudPage({ kind }: { kind: CatalogKind }) {
   const [showNew, setShowNew] = useState(false);
   const [editTarget, setEditTarget] = useState<CatalogItem | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<CatalogItem | null>(null);
+
+  // The three maintainer routes reuse the SAME component instance (React
+  // Router swaps only the `kind` prop), so a form left open on one route (e.g.
+  // editing an author) would otherwise leak onto the next one (genres). Reset
+  // all local UI state whenever the kind changes.
+  const lastKind = useRef(kind);
+  useEffect(() => {
+    if (lastKind.current === kind) return;
+    lastKind.current = kind;
+    setShowNew(false);
+    setEditTarget(null);
+    setDeleteTarget(null);
+  }, [kind]);
 
   const items = useQuery({
     queryKey: ['catalogs', kind],
@@ -263,7 +276,7 @@ function CatalogForm({ kind, initial, onDone }: { kind: CatalogKind; initial?: C
   const fieldError = getFieldError(formState.errors, 'name');
 
   return (
-    <form className="card form" noValidate onSubmit={onSubmit}>
+    <form className="card form catalog-form" noValidate onSubmit={onSubmit}>
       <FormAlert message={apiMessage} />
       <h3 className="form-title">
         {initial
