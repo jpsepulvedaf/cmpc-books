@@ -58,27 +58,33 @@ CRUD, exportación CSV, auditoría de operaciones y control de acceso basado en 
 flowchart TD
     USR(["👤 Usuario / Navegador"])
 
+    %% ── FRONTEND ───────────────────────────────────────────────────────────
     subgraph FE["Frontend · apps/web (React 18 + TypeScript + Vite 6)"]
         LOGIN["Login / sesión JWT"]
         CATALOG["Catálogo<br/>filtros · orden · paginación · búsqueda (debounce)"]
-        FORM["Formularios CRUD + validación reactiva + imagen"]
+        FORM["Formularios CRUD + validación reactiva + imagen<br/>modal ＋ Agregar (autor/editorial/género)"]
         DETAIL["Detalle del libro"]
-        ADMINUI["Usuarios · Auditoría (solo ADMIN)"]
+        ADMINUI["Administración (ADMIN)<br/>Usuarios · Autores · Editoriales · Géneros · Auditoría"]
         ERRUI["Manejo de errores (toasts en español)"]
     end
 
+    %% ── BACKEND ────────────────────────────────────────────────────────────
     subgraph BE["Backend · apps/api (NestJS 12 + TypeScript)"]
         GATE["Interceptores globales<br/>(envelope de respuesta + auditoría)"]
         GUARDS["JwtAuthGuard (JWT) + RolesGuard (@Roles)"]
-        MODS["Módulos<br/>auth · users · books · authors · publishers · genres · audit · export · health"]
+        MODS["Módulos<br/>auth · users · books · catalogs · audit · export · health"]
+        CRUD_CATALOGS["Catálogos (ADMIN CRUD)<br/>authors · publishers · genres<br/>clear 409 — NAME_EXISTS / CATALOG_IN_USE"]
+        TX_USERS["Usuarios (ADMIN)<br/>CRUD + password · transacción atómica<br/>con auditoría interna"]
         ROUTE["Controllers → Services → Repositories<br/>(capa de repositorio sobre PrismaService)"]
         SWAGGER["Swagger / OpenAPI<br/>(condicional · SWAGGER_ENABLED)"]
         LOGGER["Logging estructurado<br/>(Logger de Nest por módulo)"]
     end
 
+    %% ── Persistencia ───────────────────────────────────────────────────────
     PRISMA["Prisma 7<br/>cliente tipado + driver adapter (@prisma/adapter-pg)"]
     DB[("PostgreSQL 16<br/>volumen Docker persistente")]
 
+    %% ── Flujo principal ────────────────────────────────────────────────────
     USR -->|HTTPS| LOGIN
     USR -->|HTTPS| CATALOG
     USR -->|HTTPS| FORM
@@ -87,20 +93,28 @@ flowchart TD
 
     LOGIN -->|POST /api/auth/login| GATE
     CATALOG -->|GET /api/books| GATE
-    FORM -->|CRUD + multipart| GATE
+    FORM -->|CRUD + multipart · ＋ Agregar| GATE
     DETAIL -->|GET /api/books/:id| GATE
-    ADMINUI -->|/api/users · /api/audit| GATE
+    ADMINUI -->|/api/users · /api/catalogs · /api/audit| GATE
 
     GATE --> GUARDS
     GUARDS --> MODS
+    MODS --> CRUD_CATALOGS
+    MODS --> TX_USERS
     MODS --> ROUTE
+    CRUD_CATALOGS --> PRISMA
+    TX_USERS --> PRISMA
     ROUTE --> PRISMA
     PRISMA -->|SQL| DB
 
+    %% ── Flujo de auditoría y logging ───────────────────────────────────────
     GATE -.->|"escribe AuditLog (best-effort)"| DB
     MODS -.-> LOGGER
+
+    %% ── Swagger (solo si SWAGGER_ENABLED=true) ─────────────────────────────
     SWAGGER -.->|"documenta"| MODS
 
+    %% ── Infraestructura Docker ─────────────────────────────────────────────
     subgraph DOCKER["Infraestructura · docker-compose.yml (multi-stage, perfiles dev/prod)"]
         SVC_DB["Servicio db — PostgreSQL 16 (host 5433)"]
         SVC_API["Servicio api — NestJS (host 3000)"]
@@ -110,6 +124,16 @@ flowchart TD
     SVC_WEB -.->|"proxy /api y /uploads"| SVC_API
     SVC_API -.->|"DATABASE_URL"| SVC_DB
     SVC_DB -.->|"volumen db-data"| DB
+
+%% ═══════════════════════════════════════════════════════════════════════════
+%% CMPC Libros — Diagrama de arquitectura del sistema (Mermaid)
+%% Prueba Técnica Full Stack · React + NestJS + PostgreSQL
+%%
+%% CÓMO GENERAR LA IMAGEN:
+%%   Opción A — https://mermaid.live  → pegar → previsualizar → exportar PNG/SVG
+%%   Opción B — VS Code con la extensión "Markdown Preview Mermaid Support"
+%%              y plugins de exportación (mermaid-cli / mmdc para PNG/SVG)
+%% ═══════════════════════════════════════════════════════════════════════════
 ```
 
 **Infraestructura** — `docker-compose.yml` orquesta tres servicios:
@@ -267,11 +291,9 @@ apps/api/src/
 └── modules/
     ├── health/             (GET /api/health — liveness)
     ├── auth/               (POST /api/auth/login → JWT)
-    ├── users/              (CRUD de usuarios solo administrador)
+    ├── users/              (CRUD de usuarios solo administrador, transacción con auditoría interna)
     ├── books/              (CRUD + soft delete + consulta de listado)
-    ├── authors/            (mantenedor ligero)
-    ├── publishers/         (mantenedor ligero)
-    ├── genres/             (mantenedor ligero)
+    ├── catalogs/           (CRUD completo de authors · publishers · genres, solo ADMIN)
     ├── audit/              (consulta de auditoría solo administrador)
     └── export/             (GET /api/books/export.csv)
 ```
@@ -301,12 +323,13 @@ apps/web/src/
 ├── features/
 │   ├── auth/        (pantalla de login, almacenamiento de sesión, redirect-on-401)
 │   ├── books/       (listado + tabla con filtros/orden/paginación/búsqueda con debounce)
-│   ├── book-form/   (crear/editar con validación reactiva + carga de imagen)
+│   ├── book-form/   (crear/editar con validación reactiva + carga de imagen + modal ＋ Agregar)
 │   ├── book-detail/ (vista de detalle de solo lectura)
-│   ├── users/       (solo administrador)
+│   ├── users/       (crear/editar/desactivar/eliminar, solo administrador)
+│   ├── catalogs/    (mantenedores de autores/editoriales/géneros, solo administrador)
 │   └── audit/       (solo administrador)
 ├── shared/          (componentes de UI, visualización de errores, formateadores)
-└── router (navegación consciente del rol: el admin ve los módulos mantenedores)
+└── router (navegación consciente del rol: el admin ve los módulos mantenedores bajo "Administración")
 ```
 
 ### Mecanismos clave

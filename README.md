@@ -177,7 +177,7 @@ cmpc-books/
 │   │       ├── common/            # guards, decoradores, interceptores, filtro de errores, PrismaService
 │   │       └── modules/           # auth, users, books, catalogs, audit, health
 │   └── web/                       # React 18 + Vite
-│       └── src/                   # features/ (auth, books, users, audit) + lib/ + layout/ + shared/
+│       └── src/                   # features/ (auth, books, users, catalogs, audit) + lib/ + layout/ + shared/
 ├── docker-compose.yml
 └── docs/
 ```
@@ -193,6 +193,7 @@ cmpc-books/
 | ADR-06 | **Soft delete** (`deletedAt`) en libros y usuarios; consultas filtran por defecto. |
 | ADR-07 | **Disponibilidad derivada del backend**: `IN_STOCK` si `stock > 0`, nunca aceptada del cliente. |
 | ADR-08 | **Auditoría por interceptor global**: captura actor del JWT, acción, entidad y detalles; escritura *fail-tolerant* (nunca rompe la operación de negocio). |
+| ADR-13 | **Transacciones en operaciones críticas**: la actualización de usuario (perfil + rol + opcional contraseña) y su auditoría se escriben en una única `$transaction` de Prisma — si algo falla a mitad, todo se revierte. |
 | ADR-09 | **Envelope de respuesta** uniforme `{ok,data}` / `{ok,error}` vía interceptor + filtro global. |
 | ADR-10 | **CSV con BOM UTF-8** para Excel (ñ, tildes, precios con 2 decimales). |
 | ADR-11 | **Swagger condicional** (`SWAGGER_ENABLED`, por defecto `true`) — en producción el módulo no se registra. |
@@ -335,10 +336,10 @@ Documentación completa e interactiva en Swagger (`/api/docs`). Principales:
 ## 6. Testing
 
 ```bash
-npm run test --workspace api      # API: 86 tests unitarios (Vitest + Nest real)
+npm run test --workspace api      # API: 136 tests unitarios (Vitest + Nest real)
 npm run test:cov --workspace api  # API: ~82% statements / 88% líneas (excluye cliente Prisma generado)
-npm run test --workspace web      # Web: 133 tests (Vitest)
-npm run test:cov --workspace web  # Web: ~86% líneas
+npm run test --workspace web      # Web: 158 tests (Vitest)
+npm run test:cov --workspace web  # Web: ~88% líneas
 ```
 
 - Backend: `supertest` no instalado, los tests usan `Test.createTestingModule` real de `@nestjs/testing` con `PrismaService` mockeado y **bcrypt real** (round-trip de hash).
