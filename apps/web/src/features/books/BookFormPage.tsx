@@ -71,6 +71,13 @@ export function BookFormPage({ mode }: { mode: 'create' | 'edit' }) {
 
   const currentImageUrl = bookQuery.data?.imageUrl;
 
+  // A change the form fields don't track: either a brand-new file picked in
+  // the picker or the current cover marked for removal. Selecting an image
+  // does not touch any registered RHF field, so `formState.isValid` would
+  // otherwise stay `false` (preloaded with shouldValidate:false) and the
+  // Save button would never enable from the image alone.
+  const hasPendingImageChange = imageFile !== null || removeImage;
+
   // Effective preview: a just-selected file, else the current cover unless removed.
   const previewSource = imageFile
     ? imageObjectUrl
@@ -395,7 +402,7 @@ export function BookFormPage({ mode }: { mode: 'create' | 'edit' }) {
             <button
               type="submit"
               className="btn btn--primary"
-              disabled={!formState.isValid || submitting}
+              disabled={(!formState.isValid && !hasPendingImageChange) || submitting}
             >
               {submitting ? 'Guardando…' : 'Guardar'}
             </button>

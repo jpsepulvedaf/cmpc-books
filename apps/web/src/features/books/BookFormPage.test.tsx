@@ -101,10 +101,17 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.params = {};
   mocks.getCatalogBundle.mockResolvedValue(catalog);
+  // jsdom does not implement object-URL helpers used by the cover preview.
+  vi.stubGlobal('URL', {
+    ...URL,
+    createObjectURL: vi.fn(() => 'blob:preview'),
+    revokeObjectURL: vi.fn(),
+  });
 });
 
 afterEach(() => {
   cleanup();
+  vi.unstubAllGlobals();
 });
 
 describe('BookFormPage (create)', () => {
@@ -194,5 +201,28 @@ describe('BookFormPage (edit)', () => {
     );
     expect(mocks.toast.success).toHaveBeenCalledWith('Libro actualizado correctamente.');
     await waitFor(() => expect(mocks.navigate).toHaveBeenCalledWith('/libros/9'));
+  });
+
+  it('enables Guardar when only a new cover is picked (no other field touched)', async () => {
+    mocks.getBook.mockResolvedValue({ ...bookDetail, imageUrl: null });
+    mocks.updateBook.mockResolvedValue({ ...bookDetail, imageUrl: '/uploads/books/nueva.webp' });
+    mocks.uploadBookImage.mockResolvedValue(undefined);
+    mocks.params = { id: '9' };
+    renderForm('edit');
+    await waitFor(() => expect(screen.getByLabelText('Título *')).toHaveValue('El Aleph'));
+
+    // Initially the Save button is disabled: no form fields have changed yet
+    // and no image has been picked (RHF preloads with shouldValidate: false).
+    expect(screen.getByRole('button', { name: 'Guardar' })).toBeDisabled();
+
+    // Pick ONLY a new cover — this must be enough to enable Save, since an
+    // image change is not a registered RHF field and isValid stays false.
+    const file = new File(['fake-webp'], 'portada.webp', { type: 'image/webp' });
+    fireEvent.change(screen.getByLabelText('Portada').closest('label')!.querySelector('input[type="file"]')!, {
+      target: { files: [file] },
+    });
+
+    expect(screen.getByRole('button', { name: 'Guardar' })).toBeEnabled();
+    expect(screen.getByAltText('Vista previa de la nueva portada')).toBeInTheDocument();
   });
 });
