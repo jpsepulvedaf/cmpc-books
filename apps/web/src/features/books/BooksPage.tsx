@@ -3,6 +3,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { ApiError } from '../../lib/api';
+import { queryClient } from '../../lib/queryClient';
 import { useDebounced } from '../../lib/hooks';
 import { getSession } from '../../lib/session';
 import { formatCLP, availabilityLabel } from '../../lib/format';
@@ -97,6 +98,9 @@ export function BooksPage() {
     mutationFn: (id: number) => deleteBook(id),
     onSuccess: () => {
       toast.success('Libro eliminado correctamente.');
+      // The soft-deleted book must disappear from the current listing; the
+      // list query cache keeps stale data otherwise.
+      queryClient.invalidateQueries({ queryKey: ['books'] });
       if (books.data && books.data.items.length === 1 && page > 1) {
         setPage(page - 1);
       }

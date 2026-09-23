@@ -48,22 +48,25 @@ const PUBLISHERS = ["Editorial Austral", "Editorial Andina", "Editorial del Sur"
 const GENRES = ["Ficción", "Ciencia Ficción", "Misterio", "Historia"];
 
 // { isbn, title, description, price, stock, author, publisher, genre }
+// Precios en PESOS CHILENOS (CLP): los valores base se convirtieron de USD a
+// CLP multiplicando por el tipo de cambio de referencia $947 y redondeando
+// a pesos naturales (p. ej. $19.90 USD → $18.845 CLP).
 const BOOKS = [
-  { isbn: "978-3-16-148410-0", title: "El jardín de las mariposas", description: "Una novela sobre memoria y reconciliación familiar.", price: 19.9, stock: 12, author: AUTHORS[0], publisher: PUBLISHERS[0], genre: GENRES[0] },
-  { isbn: "978-1-4028-9461-4", title: "Crónicas de la luna roja", description: "Tres generaciones unidas por un secreto lunar.", price: 22.5, stock: 0, author: AUTHORS[0], publisher: PUBLISHERS[1], genre: GENRES[0] },
-  { isbn: "978-0-596-52068-2", title: "La casa de los susurros", description: "Un misterio en una casona del sur.", price: 17.8, stock: 8, author: AUTHORS[1], publisher: PUBLISHERS[0], genre: GENRES[2] },
-  { isbn: "978-1-86100-373-0", title: "El último faro", description: "La historia de un guardián que nunca apagó su luz.", price: 21.4, stock: 5, author: AUTHORS[2], publisher: PUBLISHERS[2], genre: GENRES[0] },
-  { isbn: "978-1-8435-6839-9", title: "Bitácora del viento", description: "Cartas de viaje escritas durante quince años.", price: 16.9, stock: 0, author: AUTHORS[1], publisher: PUBLISHERS[2], genre: GENRES[0] },
-  { isbn: "978-0-545-90113-5", title: "El reloj de arena infinita", description: "Un artefacto que detiene el tiempo en cada vuelta.", price: 25.99, stock: 15, author: AUTHORS[0], publisher: PUBLISHERS[1], genre: GENRES[1] },
-  { isbn: "978-0-596-00037-9", title: "Memorias de un bibliotecario", description: "Las historias escondidas detrás de una colección pública.", price: 28.0, stock: 7, author: AUTHORS[2], publisher: PUBLISHERS[0], genre: GENRES[3] },
-  { isbn: "978-1-4303-0982-8", title: "La conspiración del mediodía", description: "Un robo imposible a plena luz del día.", price: 18.6, stock: 0, author: AUTHORS[1], publisher: PUBLISHERS[0], genre: GENRES[2] },
-  { isbn: "978-0-13-149317-5", title: "El atlas de los sueños", description: "Un mapa que señala lugares que no existen.", price: 23.75, stock: 10, author: AUTHORS[2], publisher: PUBLISHERS[2], genre: GENRES[0] },
-  { isbn: "978-0-452-28407-9", title: "Senderos de sal", description: "El éxodo de un pueblo costero contado por sus mujeres.", price: 20.3, stock: 9, author: AUTHORS[1], publisher: PUBLISHERS[1], genre: GENRES[3] },
-  { isbn: "978-1-934871-37-3", title: "La máquina de lluvia", description: "Un invento que desata tormentas a voluntad.", price: 26.45, stock: 0, author: AUTHORS[0], publisher: PUBLISHERS[2], genre: GENRES[1] },
-  { isbn: "978-0-7356-0865-1", title: "El código del archivero", description: "Un archivo milenario que nadie logró descifrar.", price: 19.95, stock: 6, author: AUTHORS[2], publisher: PUBLISHERS[1], genre: GENRES[2] },
-  { isbn: "978-0-7685-4987-2", title: "Ciudad de papel", description: "Una urbe que se reconstruye cada amanecer.", price: 21.9, stock: 14, author: AUTHORS[1], publisher: PUBLISHERS[0], genre: GENRES[0] },
-  { isbn: "978-1-56619-905-4", title: "Los días de ceniza", description: "Memoria de la erupción que cambió un valle entero.", price: 24.6, stock: 0, author: AUTHORS[0], publisher: PUBLISHERS[1], genre: GENRES[3] },
-  { isbn: "978-0-1430-4189-7", title: "La frontera líquida", description: "Un río que separa dos países y dos formas de amar.", price: 22.2, stock: 11, author: AUTHORS[2], publisher: PUBLISHERS[2], genre: GENRES[1] },
+  { isbn: "978-3-16-148410-0", title: "El jardín de las mariposas", description: "Una novela sobre memoria y reconciliación familiar.", price: 18845, stock: 12, author: AUTHORS[0], publisher: PUBLISHERS[0], genre: GENRES[0] },
+  { isbn: "978-1-4028-9461-4", title: "Crónicas de la luna roja", description: "Tres generaciones unidas por un secreto lunar.", price: 21308, stock: 0, author: AUTHORS[0], publisher: PUBLISHERS[1], genre: GENRES[0] },
+  { isbn: "978-0-596-52068-2", title: "La casa de los susurros", description: "Un misterio en una casona del sur.", price: 16857, stock: 8, author: AUTHORS[1], publisher: PUBLISHERS[0], genre: GENRES[2] },
+  { isbn: "978-1-86100-373-0", title: "El último faro", description: "La historia de un guardián que nunca apagó su luz.", price: 20266, stock: 5, author: AUTHORS[2], publisher: PUBLISHERS[2], genre: GENRES[0] },
+  { isbn: "978-1-8435-6839-9", title: "Bitácora del viento", description: "Cartas de viaje escritas durante quince años.", price: 16004, stock: 0, author: AUTHORS[1], publisher: PUBLISHERS[2], genre: GENRES[0] },
+  { isbn: "978-0-545-90113-5", title: "El reloj de arena infinita", description: "Un artefacto que detiene el tiempo en cada vuelta.", price: 24613, stock: 15, author: AUTHORS[0], publisher: PUBLISHERS[1], genre: GENRES[1] },
+  { isbn: "978-0-596-00037-9", title: "Memorias de un bibliotecario", description: "Las historias escondidas detrás de una colección pública.", price: 26516, stock: 7, author: AUTHORS[2], publisher: PUBLISHERS[0], genre: GENRES[3] },
+  { isbn: "978-1-4303-0982-8", title: "La conspiración del mediodía", description: "Un robo imposible a plena luz del día.", price: 17614, stock: 0, author: AUTHORS[1], publisher: PUBLISHERS[0], genre: GENRES[2] },
+  { isbn: "978-0-13-149317-5", title: "El atlas de los sueños", description: "Un mapa que señala lugares que no existen.", price: 22491, stock: 10, author: AUTHORS[2], publisher: PUBLISHERS[2], genre: GENRES[0] },
+  { isbn: "978-0-452-28407-9", title: "Senderos de sal", description: "El éxodo de un pueblo costero contado por sus mujeres.", price: 19224, stock: 9, author: AUTHORS[1], publisher: PUBLISHERS[1], genre: GENRES[3] },
+  { isbn: "978-1-934871-37-3", title: "La máquina de lluvia", description: "Un invento que desata tormentas a voluntad.", price: 25048, stock: 0, author: AUTHORS[0], publisher: PUBLISHERS[2], genre: GENRES[1] },
+  { isbn: "978-0-7356-0865-1", title: "El código del archivero", description: "Un archivo milenario que nadie logró descifrar.", price: 18893, stock: 6, author: AUTHORS[2], publisher: PUBLISHERS[1], genre: GENRES[2] },
+  { isbn: "978-0-7685-4987-2", title: "Ciudad de papel", description: "Una urbe que se reconstruye cada amanecer.", price: 20739, stock: 14, author: AUTHORS[1], publisher: PUBLISHERS[0], genre: GENRES[0] },
+  { isbn: "978-1-56619-905-4", title: "Los días de ceniza", description: "Memoria de la erupción que cambió un valle entero.", price: 23296, stock: 0, author: AUTHORS[0], publisher: PUBLISHERS[1], genre: GENRES[3] },
+  { isbn: "978-0-1430-4189-7", title: "La frontera líquida", description: "Un río que separa dos países y dos formas de amar.", price: 21023, stock: 11, author: AUTHORS[2], publisher: PUBLISHERS[2], genre: GENRES[1] },
 ];
 
 async function main() {

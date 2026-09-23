@@ -14,7 +14,10 @@ const mocks = vi.hoisted(() => ({
   exportBooksCsv: vi.fn(),
   triggerCsvDownload: vi.fn(),
   toast: { success: vi.fn(), error: vi.fn() },
+  invalidateQueries: vi.fn(),
 }));
+
+vi.mock('../../lib/queryClient', () => ({ queryClient: { invalidateQueries: mocks.invalidateQueries } }));
 
 vi.mock('./api', () => ({
   listBooks: mocks.listBooks,
@@ -206,6 +209,10 @@ describe('BooksPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Eliminar' }));
     await vi.waitFor(() => expect(mocks.deleteBook).toHaveBeenCalledWith(1));
     expect(mocks.toast.success).toHaveBeenCalledWith('Libro eliminado correctamente.');
+    // The list query cache is invalidated so the deleted book disappears.
+    await vi.waitFor(() =>
+      expect(mocks.invalidateQueries).toHaveBeenCalledWith({ queryKey: ['books'] })
+    );
     // The dialog closes after settling.
     await vi.waitFor(() => expect(screen.queryByText(/¿Estás seguro/)).toBeNull());
   });

@@ -41,7 +41,7 @@ export class CreateBookDto {
   @MaxLength(2000)
   description?: string;
 
-  @ApiProperty({ example: 19.9, description: 'Precio mayor que 0, con un máximo de 2 decimales' })
+  @ApiProperty({ example: 18845, description: 'Precio en pesos chilenos (CLP) mayor que 0, con un máximo de 2 decimales' })
   @Type(() => Number)
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0.01)
