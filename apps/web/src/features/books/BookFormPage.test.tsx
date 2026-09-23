@@ -2,9 +2,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { setSession } from '../../lib/session';
+import { queryClient } from '../../lib/queryClient';
 import { BookFormPage } from './BookFormPage';
 
 const mocks = vi.hoisted(() => ({
@@ -46,7 +47,6 @@ vi.mock('react-router-dom', () => ({
   Link: ({ to, children }: { to: string; children: ReactNode }) => <a href={to}>{children}</a>,
 }));
 
-vi.mock('../../lib/queryClient', () => ({ queryClient: { invalidateQueries: mocks.invalidateQueries } }));
 vi.mock('sonner', () => ({ toast: mocks.toast }));
 
 const catalog = {
@@ -73,9 +73,8 @@ const bookDetail = {
 };
 
 function renderForm(mode: 'create' | 'edit' = 'create') {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
-    <QueryClientProvider client={client}>
+    <QueryClientProvider client={queryClient}>
       <BookFormPage mode={mode} />
     </QueryClientProvider>
   );
@@ -113,6 +112,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.params = {};
   mocks.getCatalogBundle.mockResolvedValue(catalog);
+  queryClient.removeQueries({ queryKey: ['catalogs'] });
   mocks.catalogGroups.authors.create.mockResolvedValue({ id: 7, name: 'Gabriel García Márquez' });
   mocks.catalogGroups.publishers.create.mockResolvedValue({ id: 8, name: 'Anagrama' });
   mocks.catalogGroups.genres.create.mockResolvedValue({ id: 9, name: 'Poesía' });
@@ -307,11 +307,10 @@ describe('BookFormPage (inline catalog creation)', () => {
     await vi.waitFor(() =>
       expect(mocks.toast.success).toHaveBeenCalledWith('Autor creado correctamente.')
     );
-    expect(mocks.invalidateQueries).toHaveBeenCalledWith({ queryKey: ['catalogs'] });
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
   });
 
-  it('keeps the typed book form values while creating a catalog entry', async () => {
+  it('keeps the typed book form values while creating a catalog entry and auto-selects it', async () => {
     setSession('tok', { id: 1, email: 'admin@cmpc.libros', role: { code: 'ADMIN' } });
     renderForm();
     await screen.findByRole('option', { name: 'Jorge Luis Borges' });
@@ -332,13 +331,26 @@ describe('BookFormPage (inline catalog creation)', () => {
     fireEvent.blur(nameInput);
     const createButton = screen.getByRole('button', { name: 'Crear' });
     await waitFor(() => expect(createButton).not.toBeDisabled());
+
+    // After the creation the catalog bundle is invalidated and refetches with
+    // the new entry (mock id 7) — replicate that so the select can hold it.
+    mocks.getCatalogBundle.mockResolvedValue({
+      genres: [{ id: 2, name: 'Ficción' }],
+      authors: [
+        { id: 1, name: 'Jorge Luis Borges' },
+        { id: 7, name: 'Mario Vargas Llosa' },
+      ],
+      publishers: [{ id: 1, name: 'Alianza' }],
+    });
     createButton.click();
 
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
 
-    // The book form stayed mounted under the overlay with its values intact.
+// The book form stayed mounted under the overlay with its values intact,
+    // and the freshly-created author (mock id 7) is selected automatically
+    // once the invalidated catalog bundle refetches with the new entry.
     expect(screen.getByLabelText('Título *')).toHaveValue('Cien años de soledad');
-    expect(screen.getByLabelText('Autor *')).toHaveValue('1');
+    await waitFor(() => expect(screen.getByLabelText('Autor *')).toHaveValue('7'));
   });
 
   it('does not submit the book form when pressing Enter inside the modal', async () => {

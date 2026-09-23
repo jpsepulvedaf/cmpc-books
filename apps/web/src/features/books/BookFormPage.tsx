@@ -71,8 +71,36 @@ export function BookFormPage({ mode }: { mode: 'create' | 'edit' }) {
   const [imageError, setImageError] = useState<string | undefined>(undefined);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | undefined>(undefined);
-  // Open modal kind for the inline catalog creation; null = closed.
   const [catalogKind, setCatalogKind] = useState<CatalogKind | null>(null);
+  const [autoSelectNew, setAutoSelectNew] = useState<{ kind: CatalogKind; id: number } | null>(null);
+
+  // After a catalog entry is created from the inline modal the select should
+  // stay on the fresh value. This runs in an effect so RHF sets the value on a
+  // stable tree (the modal has already unmounted by then) and the catalog
+  // select has been refreshed.
+useEffect(() => {
+    if (!autoSelectNew) return;
+    const field =
+      autoSelectNew.kind === 'authors'
+        ? 'authorId'
+        : autoSelectNew.kind === 'publishers'
+          ? 'publisherId'
+          : 'genreId';
+    const hasEntry =
+      autoSelectNew.kind === 'authors'
+        ? catalogs.data?.authors.some((a) => a.id === autoSelectNew.id)
+        : autoSelectNew.kind === 'publishers'
+          ? catalogs.data?.publishers.some((p) => p.id === autoSelectNew.id)
+          : catalogs.data?.genres.some((g) => g.id === autoSelectNew.id);
+    // Wait for the refreshed bundle to include the created entry before RHF
+    // sets the select value (a value without an option would be dropped).
+    if (!hasEntry) return;
+    setValues(
+      { [field]: String(autoSelectNew.id) } as Partial<BookFormValues>,
+      { shouldValidate: true, shouldDirty: true, shouldTouch: false },
+    );
+    setAutoSelectNew(null);
+  }, [autoSelectNew, setValues, catalogs.data]);
 
   const canManageCatalogs = isRole('ADMIN');
   const currentImageUrl = bookQuery.data?.imageUrl;
@@ -271,9 +299,22 @@ export function BookFormPage({ mode }: { mode: 'create' | 'edit' }) {
             <FieldError name="stock" message={fieldError('stock')} />
           </div>
 
-          <div className="field">
-            <div className="field-label-row">
-              <label htmlFor="book-author">Autor *</label>
+          <div className="field field-with-add">
+            <label htmlFor="book-author">Autor *</label>
+            <div className="field-add-row">
+              <select
+                {...register('authorId', { validate: zodField(bookSchemas.authorId) })}
+                id="book-author"
+                aria-invalid={fieldError('authorId') ? 'true' : undefined}
+                aria-describedby={fieldError('authorId') ? fieldErrorId('authorId') : undefined}
+              >
+                <option value="">Selecciona un autor…</option>
+                {catalogs.data?.authors.map((author) => (
+                  <option key={author.id} value={String(author.id)}>
+                    {author.name}
+                  </option>
+                ))}
+              </select>
               {canManageCatalogs ? (
                 <button
                   type="button"
@@ -285,25 +326,25 @@ export function BookFormPage({ mode }: { mode: 'create' | 'edit' }) {
                 </button>
               ) : null}
             </div>
-            <select
-              {...register('authorId', { validate: zodField(bookSchemas.authorId) })}
-              id="book-author"
-              aria-invalid={fieldError('authorId') ? 'true' : undefined}
-              aria-describedby={fieldError('authorId') ? fieldErrorId('authorId') : undefined}
-            >
-              <option value="">Selecciona un autor…</option>
-              {catalogs.data?.authors.map((author) => (
-                <option key={author.id} value={String(author.id)}>
-                  {author.name}
-                </option>
-              ))}
-            </select>
             <FieldError name="authorId" message={fieldError('authorId')} />
           </div>
 
-          <div className="field">
-            <div className="field-label-row">
-              <label htmlFor="book-publisher">Editorial *</label>
+          <div className="field field-with-add">
+            <label htmlFor="book-publisher">Editorial *</label>
+            <div className="field-add-row">
+              <select
+                {...register('publisherId', { validate: zodField(bookSchemas.publisherId) })}
+                id="book-publisher"
+                aria-invalid={fieldError('publisherId') ? 'true' : undefined}
+                aria-describedby={fieldError('publisherId') ? fieldErrorId('publisherId') : undefined}
+              >
+                <option value="">Selecciona una editorial…</option>
+                {catalogs.data?.publishers.map((publisher) => (
+                  <option key={publisher.id} value={String(publisher.id)}>
+                    {publisher.name}
+                  </option>
+                ))}
+              </select>
               {canManageCatalogs ? (
                 <button
                   type="button"
@@ -315,25 +356,25 @@ export function BookFormPage({ mode }: { mode: 'create' | 'edit' }) {
                 </button>
               ) : null}
             </div>
-            <select
-              {...register('publisherId', { validate: zodField(bookSchemas.publisherId) })}
-              id="book-publisher"
-              aria-invalid={fieldError('publisherId') ? 'true' : undefined}
-              aria-describedby={fieldError('publisherId') ? fieldErrorId('publisherId') : undefined}
-            >
-              <option value="">Selecciona una editorial…</option>
-              {catalogs.data?.publishers.map((publisher) => (
-                <option key={publisher.id} value={String(publisher.id)}>
-                  {publisher.name}
-                </option>
-              ))}
-            </select>
             <FieldError name="publisherId" message={fieldError('publisherId')} />
           </div>
 
-          <div className="field">
-            <div className="field-label-row">
-              <label htmlFor="book-genre">Género *</label>
+          <div className="field field-with-add">
+            <label htmlFor="book-genre">Género *</label>
+            <div className="field-add-row">
+              <select
+                {...register('genreId', { validate: zodField(bookSchemas.genreId) })}
+                id="book-genre"
+                aria-invalid={fieldError('genreId') ? 'true' : undefined}
+                aria-describedby={fieldError('genreId') ? fieldErrorId('genreId') : undefined}
+              >
+                <option value="">Selecciona un género…</option>
+                {catalogs.data?.genres.map((genre) => (
+                  <option key={genre.id} value={String(genre.id)}>
+                    {genre.name}
+                  </option>
+                ))}
+              </select>
               {canManageCatalogs ? (
                 <button
                   type="button"
@@ -345,19 +386,6 @@ export function BookFormPage({ mode }: { mode: 'create' | 'edit' }) {
                 </button>
               ) : null}
             </div>
-            <select
-              {...register('genreId', { validate: zodField(bookSchemas.genreId) })}
-              id="book-genre"
-              aria-invalid={fieldError('genreId') ? 'true' : undefined}
-              aria-describedby={fieldError('genreId') ? fieldErrorId('genreId') : undefined}
-            >
-              <option value="">Selecciona un género…</option>
-              {catalogs.data?.genres.map((genre) => (
-                <option key={genre.id} value={String(genre.id)}>
-                  {genre.name}
-                </option>
-              ))}
-            </select>
             <FieldError name="genreId" message={fieldError('genreId')} />
           </div>
 
@@ -457,11 +485,10 @@ export function BookFormPage({ mode }: { mode: 'create' | 'edit' }) {
           open
           kind={catalogKind}
           onClose={() => setCatalogKind(null)}
-          onCreated={() => {
-            // Force the catalog bundle to refetch so the new entry shows up in
-            // the selects right away (the user picks it manually; the current
-            // form values are untouched).
+          onCreated={(item) => {
+            // Refresh the catalog bundle; the effect then selects the novel id.
             queryClient.invalidateQueries({ queryKey: ['catalogs'] });
+            setAutoSelectNew({ kind: catalogKind!, id: item.id });
           }}
         />
       ) : null}

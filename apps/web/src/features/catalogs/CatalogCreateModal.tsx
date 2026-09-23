@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { ApiError } from '../../lib/api';
+import type { CatalogItem } from '../../lib/types';
 import { catalogNameSchema, zodField } from '../../lib/validators';
 import { FieldError, FormAlert, fieldErrorId, getFieldError } from '../../shared/Form';
 import { IconClose } from '../../shared/Icons';
@@ -45,7 +46,8 @@ export interface CatalogCreateModalProps {
   open: boolean;
   kind: CatalogKind;
   onClose: () => void;
-  onCreated?: () => void;
+  /** Called with the freshly-created catalog entry so the parent can select it. */
+  onCreated?: (item: CatalogItem) => void;
 }
 
 export function CatalogCreateModal({ open, kind, onClose, onCreated }: CatalogCreateModalProps) {
@@ -95,9 +97,9 @@ export function CatalogCreateModal({ open, kind, onClose, onCreated }: CatalogCr
     setApiError(undefined);
     group
       .create(values.name.trim())
-      .then(() => {
+      .then((item: CatalogItem) => {
         toast.success(copy.createMessage);
-        onCreated?.();
+        onCreated?.(item);
         onClose();
       })
       .catch((error: unknown) => {

@@ -230,6 +230,55 @@
   color: var(--color-primary);
 }
 
+/* ── Admin dropdown ("Administración") ─────────────────────────────────── */
+.nav-dropdown {
+  position: relative;
+}
+
+.nav-link--dropdown {
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  font-weight: 600;
+  font-size: 0.92rem;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.nav-link--dropdown:hover {
+  background: var(--color-surface-alt);
+  color: var(--color-text);
+}
+
+.nav-dropdown__menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 180px;
+  padding: 6px 10px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-pop);
+  z-index: 45;
+  list-style: none;
+}
+
+.nav-dropdown__menu .nav-link--dropdown-item {
+  display: block;
+  width: 100%;
+  padding: 0.45em 0.9em;
+  border-radius: var(--radius-sm);
+  font-size: 0.92rem;
+}
+
+.nav-dropdown__separator {
+  height: 1px;
+  margin: 6px 8px;
+  background: var(--color-border);
+}
+
 .navbar__user {
   display: flex;
   align-items: center;
@@ -267,6 +316,20 @@
   width: min(320px, calc(100% - 32px));
   margin: 8px auto 0;
   z-index: 45;
+}
+
+.mobile-menu__section {
+  display: block;
+  padding: 2px 4px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.mobile-menu__sub {
+  padding-left: 14px;
 }
 
 @media (max-width: 900px) {
@@ -367,6 +430,31 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+}
+
+/* Catalog "Agregar" button aligned to the RIGHT of its select, all on the same
+   row — every add button shares the horizontal band of the select controls in
+   the grid, so the three buttons stay perfectly aligned. */
+.field-with-add {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.field-with-add .field-add-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.field-with-add .field-add-row select {
+  flex: 1;
+  min-width: 0;
+  min-height: 40px;
+}
+
+.field-with-add .field-add-row .btn {
+  flex-shrink: 0;
 }
 
 .field input,
