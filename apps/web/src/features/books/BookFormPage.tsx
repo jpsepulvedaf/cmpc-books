@@ -5,9 +5,10 @@ import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { ApiError } from '../../lib/api';
 import { resolveImageUrl } from '../../lib/media';
+import { isRole } from '../../lib/session';
 import { getFieldError, FieldError, FormAlert, fieldErrorId, FormHint } from '../../shared/Form';
 import { LoadingSpinner } from '../../shared/LoadingSpinner';
-import { IconClose } from '../../shared/Icons';
+import { IconClose, IconPlus } from '../../shared/Icons';
 import {
   bookSchemas,
   EMPTY_BOOK_FORM,
@@ -23,6 +24,8 @@ import {
   updateBook,
   uploadBookImage,
 } from './api';
+import { CatalogCreateModal } from '../catalogs/CatalogCreateModal';
+import type { CatalogKind } from '../catalogs/api';
 import { queryClient } from '../../lib/queryClient';
 
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
@@ -68,7 +71,10 @@ export function BookFormPage({ mode }: { mode: 'create' | 'edit' }) {
   const [imageError, setImageError] = useState<string | undefined>(undefined);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | undefined>(undefined);
+  // Open modal kind for the inline catalog creation; null = closed.
+  const [catalogKind, setCatalogKind] = useState<CatalogKind | null>(null);
 
+  const canManageCatalogs = isRole('ADMIN');
   const currentImageUrl = bookQuery.data?.imageUrl;
 
   // A change the form fields don't track: either a brand-new file picked in
@@ -266,7 +272,19 @@ export function BookFormPage({ mode }: { mode: 'create' | 'edit' }) {
           </div>
 
           <div className="field">
-            <label htmlFor="book-author">Autor *</label>
+            <div className="field-label-row">
+              <label htmlFor="book-author">Autor *</label>
+              {canManageCatalogs ? (
+                <button
+                  type="button"
+                  className="btn btn--ghost btn--sm"
+                  aria-label="Agregar autor"
+                  onClick={() => setCatalogKind('authors')}
+                >
+                  <IconPlus /> Agregar
+                </button>
+              ) : null}
+            </div>
             <select
               {...register('authorId', { validate: zodField(bookSchemas.authorId) })}
               id="book-author"
@@ -284,7 +302,19 @@ export function BookFormPage({ mode }: { mode: 'create' | 'edit' }) {
           </div>
 
           <div className="field">
-            <label htmlFor="book-publisher">Editorial *</label>
+            <div className="field-label-row">
+              <label htmlFor="book-publisher">Editorial *</label>
+              {canManageCatalogs ? (
+                <button
+                  type="button"
+                  className="btn btn--ghost btn--sm"
+                  aria-label="Agregar editorial"
+                  onClick={() => setCatalogKind('publishers')}
+                >
+                  <IconPlus /> Agregar
+                </button>
+              ) : null}
+            </div>
             <select
               {...register('publisherId', { validate: zodField(bookSchemas.publisherId) })}
               id="book-publisher"
@@ -302,7 +332,19 @@ export function BookFormPage({ mode }: { mode: 'create' | 'edit' }) {
           </div>
 
           <div className="field">
-            <label htmlFor="book-genre">Género *</label>
+            <div className="field-label-row">
+              <label htmlFor="book-genre">Género *</label>
+              {canManageCatalogs ? (
+                <button
+                  type="button"
+                  className="btn btn--ghost btn--sm"
+                  aria-label="Agregar género"
+                  onClick={() => setCatalogKind('genres')}
+                >
+                  <IconPlus /> Agregar
+                </button>
+              ) : null}
+            </div>
             <select
               {...register('genreId', { validate: zodField(bookSchemas.genreId) })}
               id="book-genre"
@@ -408,6 +450,20 @@ export function BookFormPage({ mode }: { mode: 'create' | 'edit' }) {
             </button>
           </div>
         </form>
+      ) : null}
+
+      {catalogKind ? (
+        <CatalogCreateModal
+          open
+          kind={catalogKind}
+          onClose={() => setCatalogKind(null)}
+          onCreated={() => {
+            // Force the catalog bundle to refetch so the new entry shows up in
+            // the selects right away (the user picks it manually; the current
+            // form values are untouched).
+            queryClient.invalidateQueries({ queryKey: ['catalogs'] });
+          }}
+        />
       ) : null}
     </section>
   );

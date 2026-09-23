@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import '@testing-library/jest-dom/vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
+import { setSession } from '../../lib/session';
 import { BookFormPage } from './BookFormPage';
 
 const mocks = vi.hoisted(() => ({
@@ -17,6 +18,11 @@ const mocks = vi.hoisted(() => ({
   invalidateQueries: vi.fn(),
   toast: { success: vi.fn(), error: vi.fn() },
   params: {} as Record<string, string>,
+  catalogGroups: {
+    authors: { create: vi.fn() },
+    publishers: { create: vi.fn() },
+    genres: { create: vi.fn() },
+  },
 }));
 
 vi.mock('./api', () => ({
@@ -26,6 +32,12 @@ vi.mock('./api', () => ({
   getCatalogBundle: mocks.getCatalogBundle,
   uploadBookImage: mocks.uploadBookImage,
   deleteBookImage: mocks.deleteBookImage,
+}));
+
+// The catalog create modal (features/catalogs) uses this module; only the
+// create path is exercised from the book form.
+vi.mock('../catalogs/api', () => ({
+  catalogGroups: mocks.catalogGroups,
 }));
 
 vi.mock('react-router-dom', () => ({
@@ -101,6 +113,9 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.params = {};
   mocks.getCatalogBundle.mockResolvedValue(catalog);
+  mocks.catalogGroups.authors.create.mockResolvedValue({ id: 7, name: 'Gabriel García Márquez' });
+  mocks.catalogGroups.publishers.create.mockResolvedValue({ id: 8, name: 'Anagrama' });
+  mocks.catalogGroups.genres.create.mockResolvedValue({ id: 9, name: 'Poesía' });
   // jsdom does not implement object-URL helpers used by the cover preview.
   vi.stubGlobal('URL', {
     ...URL,
@@ -224,5 +239,148 @@ describe('BookFormPage (edit)', () => {
 
     expect(screen.getByRole('button', { name: 'Guardar' })).toBeEnabled();
     expect(screen.getByAltText('Vista previa de la nueva portada')).toBeInTheDocument();
+  });
+});
+
+describe('BookFormPage (inline catalog creation)', () => {
+  it('shows the Agregar buttons next to the catalog selects for ADMIN sessions', async () => {
+    setSession('tok', { id: 1, email: 'admin@cmpc.libros', role: { code: 'ADMIN' } });
+    renderForm();
+    await screen.findByRole('option', { name: 'Jorge Luis Borges' });
+
+    expect(screen.getByRole('button', { name: 'Agregar autor' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Agregar editorial' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Agregar género' })).toBeInTheDocument();
+    // The buttons must not submit the book form.
+    for (const name of ['Agregar autor', 'Agregar editorial', 'Agregar género']) {
+      expect(screen.getByRole('button', { name })).toHaveAttribute('type', 'button');
+    }
+  });
+
+  it.each<'OPERADOR' | 'CONSULTA'>(['OPERADOR', 'CONSULTA'])(
+    'does not show the Agregar buttons for %s sessions',
+    async (role) => {
+      setSession('tok', { id: 2, email: 'operador@cmpc.libros', role: { code: role } });
+      renderForm();
+      await screen.findByRole('option', { name: 'Jorge Luis Borges' });
+
+      expect(screen.queryByRole('button', { name: 'Agregar autor' })).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Agregar editorial' })).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Agregar género' })).toBeNull();
+    }
+  );
+
+  it.each<[string, string]>([
+    ['Agregar autor', 'Nuevo autor'],
+    ['Agregar editorial', 'Nueva editorial'],
+    ['Agregar género', 'Nuevo género'],
+  ])('opens the catalog modal with the right title from %s', async (buttonName, title) => {
+    setSession('tok', { id: 1, email: 'admin@cmpc.libros', role: { code: 'ADMIN' } });
+    renderForm();
+    await screen.findByRole('option', { name: 'Jorge Luis Borges' });
+
+    fireEvent.click(screen.getByRole('button', { name: buttonName }));
+
+    const dialog = screen.getByRole('dialog');
+    expect(dialog).toBeInTheDocument();
+    expect(dialog).toHaveAttribute('aria-modal', 'true');
+    expect(screen.getByRole('heading', { name: title })).toBeInTheDocument();
+    expect(screen.getByLabelText('Nombre')).toBeInTheDocument();
+  });
+
+  it('creates an author, toasts, refreshes the catalogs and closes the modal', async () => {
+    setSession('tok', { id: 1, email: 'admin@cmpc.libros', role: { code: 'ADMIN' } });
+    renderForm();
+    await screen.findByRole('option', { name: 'Jorge Luis Borges' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Agregar autor' }));
+    const nameInput = screen.getByLabelText('Nombre');
+    fireEvent.change(nameInput, { target: { value: 'Gabriel García Márquez' } });
+    fireEvent.blur(nameInput);
+    const createButton = screen.getByRole('button', { name: 'Crear' });
+    await waitFor(() => expect(createButton).not.toBeDisabled());
+    createButton.click();
+
+    await vi.waitFor(() =>
+      expect(mocks.catalogGroups.authors.create).toHaveBeenCalledWith('Gabriel García Márquez')
+    );
+    await vi.waitFor(() =>
+      expect(mocks.toast.success).toHaveBeenCalledWith('Autor creado correctamente.')
+    );
+    expect(mocks.invalidateQueries).toHaveBeenCalledWith({ queryKey: ['catalogs'] });
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  });
+
+  it('keeps the typed book form values while creating a catalog entry', async () => {
+    setSession('tok', { id: 1, email: 'admin@cmpc.libros', role: { code: 'ADMIN' } });
+    renderForm();
+    await screen.findByRole('option', { name: 'Jorge Luis Borges' });
+
+    const titleInput = screen.getByLabelText('Título *');
+    fireEvent.focus(titleInput);
+    fireEvent.change(titleInput, { target: { value: 'Cien años de soledad' } });
+    fireEvent.blur(titleInput);
+    fireEvent.focusOut(titleInput);
+    const authorSelect = screen.getByLabelText('Autor *');
+    fireEvent.change(authorSelect, { target: { value: '1' } });
+    fireEvent.blur(authorSelect);
+    fireEvent.focusOut(authorSelect);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Agregar autor' }));
+    const nameInput = screen.getByLabelText('Nombre');
+    fireEvent.change(nameInput, { target: { value: 'Mario Vargas Llosa' } });
+    fireEvent.blur(nameInput);
+    const createButton = screen.getByRole('button', { name: 'Crear' });
+    await waitFor(() => expect(createButton).not.toBeDisabled());
+    createButton.click();
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+
+    // The book form stayed mounted under the overlay with its values intact.
+    expect(screen.getByLabelText('Título *')).toHaveValue('Cien años de soledad');
+    expect(screen.getByLabelText('Autor *')).toHaveValue('1');
+  });
+
+  it('does not submit the book form when pressing Enter inside the modal', async () => {
+    setSession('tok', { id: 1, email: 'admin@cmpc.libros', role: { code: 'ADMIN' } });
+    renderForm();
+    await screen.findByRole('option', { name: 'Jorge Luis Borges' });
+
+    fireEvent.change(screen.getByLabelText('Título *'), { target: { value: 'El Aleph' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Agregar autor' }));
+
+    // The dialog is rendered OUTSIDE the book <form> (sibling overlay), so an
+    // Enter keypress inside it can only reach the modal's own form.
+    expect(screen.getByRole('dialog').closest('form')).toBeNull();
+
+    const nameInput = screen.getByLabelText('Nombre');
+    fireEvent.change(nameInput, { target: { value: 'Julio Cortázar' } });
+    fireEvent.blur(nameInput);
+
+    // jsdom does not implicitly submit on Enter, so submit the modal's own
+    // form explicitly: the point is that an Enter inside the modal can only
+    // reach THIS form, never the book <form> (createBook stays untouched).
+    fireEvent.keyDown(nameInput, { key: 'Enter', keyCode: 13 });
+    const modalForm = nameInput.closest('form');
+    expect(modalForm).not.toBeNull();
+    fireEvent.submit(modalForm!);
+
+    await vi.waitFor(() =>
+      expect(mocks.catalogGroups.authors.create).toHaveBeenCalledWith('Julio Cortázar')
+    );
+    expect(mocks.createBook).not.toHaveBeenCalled();
+  });
+
+  it('closes the modal with Escape', async () => {
+    setSession('tok', { id: 1, email: 'admin@cmpc.libros', role: { code: 'ADMIN' } });
+    renderForm();
+    await screen.findByRole('option', { name: 'Jorge Luis Borges' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Agregar editorial' }));
+    expect(screen.getByRole('heading', { name: 'Nueva editorial' })).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: 'Escape', keyCode: 27 });
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
   });
 });

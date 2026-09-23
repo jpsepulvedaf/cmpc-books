@@ -362,6 +362,13 @@
   color: var(--color-text);
 }
 
+.field-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
 .field input,
 .field select,
 .field textarea {
