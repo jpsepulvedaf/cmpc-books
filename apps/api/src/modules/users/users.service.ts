@@ -101,7 +101,7 @@ export class UsersService {
       );
     }
 
-    const data: { fullName?: string; isActive?: boolean; roleId?: number } = {};
+    const data: { fullName?: string; isActive?: boolean; roleId?: number; passwordHash?: string } = {};
     if (dto.fullName !== undefined) data.fullName = dto.fullName;
     if (dto.isActive !== undefined) data.isActive = dto.isActive;
     if (dto.roleCode !== undefined) {
@@ -110,6 +110,10 @@ export class UsersService {
         throw new ApiException(400, 'INVALID_ROLE', 'Role code is not valid');
       }
       data.roleId = role.id;
+    }
+    // Empty string means "keep the current password"; only rehash a real one.
+    if (dto.password !== undefined && dto.password.trim().length > 0) {
+      data.passwordHash = bcrypt.hashSync(dto.password, BCRYPT_ROUNDS);
     }
 
     const user = await this.prisma.client.user.update({

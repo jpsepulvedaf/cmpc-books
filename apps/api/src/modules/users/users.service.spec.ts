@@ -229,6 +229,31 @@ describe('UsersService (unit)', () => {
       const updateArg = prisma.client.user.update.mock.calls[0][0];
       expect(updateArg.data).not.toHaveProperty('isActive');
     });
+
+    it('hashes a provided new password with bcrypt', async () => {
+      prisma.client.user.findFirst.mockResolvedValue(userRow);
+      prisma.client.user.update.mockResolvedValue({ ...userRow, role: { id: 1, code: 'ADMIN', name: 'Administrador' } });
+
+      const result = await outcome(
+        service.update(7, { fullName: 'Maria R.', password: 'NuevaClave123' }, 1),
+      );
+
+      expect(result.ok).toBe(true);
+      const updateArg = prisma.client.user.update.mock.calls[0][0];
+      expect(updateArg.data.passwordHash).toMatch(/^\$2[aby]\$10\$/);
+      expect(bcrypt.compareSync('NuevaClave123', updateArg.data.passwordHash)).toBe(true);
+    });
+
+    it('keeps the current password when an empty one is sent', async () => {
+      prisma.client.user.findFirst.mockResolvedValue(userRow);
+      prisma.client.user.update.mockResolvedValue({ ...userRow, role: { id: 1, code: 'ADMIN', name: 'Administrador' } });
+
+      const result = await outcome(service.update(7, { fullName: 'Maria R.', password: '   ' }, 1));
+
+      expect(result.ok).toBe(true);
+      const updateArg = prisma.client.user.update.mock.calls[0][0];
+      expect(updateArg.data).not.toHaveProperty('passwordHash');
+    });
   });
 
   describe('softDelete', () => {

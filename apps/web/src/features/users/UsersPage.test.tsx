@@ -105,11 +105,34 @@ describe('UsersPage', () => {
       expect(mocks.updateUser).toHaveBeenCalledWith(1, {
         fullName: 'Ana Administradora',
         roleCode: 'OPERADOR',
+        password: undefined,
       })
     );
     expect(mocks.toast.success).toHaveBeenCalledWith('Usuario actualizado correctamente.');
     await waitFor(() =>
       expect(screen.queryByRole('button', { name: 'Guardar cambios' })).toBeNull()
+    );
+  });
+
+  it('sends a new password when provided in the edit form', async () => {
+    renderUsers();
+    await screen.findByText('Ana Admin');
+
+    screen.getByRole('button', { name: 'Editar Ana Admin' }).click();
+    const saveButton = await screen.findByRole('button', { name: 'Guardar cambios' });
+    fireEvent.change(screen.getByLabelText('Nombre completo'), { target: { value: 'Ana' } });
+    fireEvent.blur(screen.getByLabelText('Nombre completo'));
+    fireEvent.change(screen.getByLabelText('Nueva contraseña'), { target: { value: 'NuevaClave123' } });
+    fireEvent.blur(screen.getByLabelText('Nueva contraseña'));
+
+    saveButton.click();
+
+    await vi.waitFor(() =>
+      expect(mocks.updateUser).toHaveBeenCalledWith(1, {
+        fullName: 'Ana',
+        roleCode: 'ADMIN',
+        password: 'NuevaClave123',
+      })
     );
   });
 

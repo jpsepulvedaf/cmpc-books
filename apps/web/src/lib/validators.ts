@@ -168,6 +168,19 @@ export const userSchemas: Record<keyof UserFormValues, ZodType> = {
 
 export const PASSWORD_HINT = 'Mínimo 8 caracteres, una mayúscula y un número.';
 
+/**
+ * Password schema for EDITING a user: empty means "keep the current one", so
+ * a blank value is valid; anything written must meet the strength rules.
+ */
+export const editUserPasswordSchema = z
+  .string()
+  .refine(
+    (value) =>
+      value === '' ||
+      (value.length >= 8 && /[A-Z]/.test(value) && /\d/.test(value)),
+    'La contraseña debe tener al menos 8 caracteres, una mayúscula y un número',
+  );
+
 // ── Auth login payload ───────────────────────────────────────────────────────
 
 export function toLoginPayload(values: LoginFormValues): { email: string; password: string } {

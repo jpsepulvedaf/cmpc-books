@@ -7,7 +7,7 @@ import { useDebounced } from '../../lib/hooks';
 import { getSession, normalizeRoleCode } from '../../lib/session';
 import { formatDateEs, roleLabel } from '../../lib/format';
 import { ROLE_OPTIONS, type RoleCode, type UserItem } from '../../lib/types';
-import { EMPTY_USER_FORM, PASSWORD_HINT, userSchemas, zodField, type UserFormValues } from '../../lib/validators';
+import { EMPTY_USER_FORM, PASSWORD_HINT, editUserPasswordSchema, userSchemas, zodField, type UserFormValues } from '../../lib/validators';
 import { createUser, deleteUser, listUsers, updateUser } from './api';
 import { queryClient } from '../../lib/queryClient';
 import { Badge } from '../../shared/Badge';
@@ -250,6 +250,7 @@ function EditUserForm({ user, onDone }: { user: UserItem; onDone: () => void }) 
     defaultValues: {
       fullName: user.fullName ?? '',
       roleCode: normalizeRoleCode(user.roleCode),
+      password: '',
     },
     mode: 'onTouched',
     shouldUseNativeValidation: false,
@@ -262,6 +263,7 @@ function EditUserForm({ user, onDone }: { user: UserItem; onDone: () => void }) 
       {
         fullName: user.fullName ?? '',
         roleCode: normalizeRoleCode(user.roleCode),
+        password: '',
       },
       { shouldValidate: false, shouldDirty: false, shouldTouch: false }
     );
@@ -274,6 +276,8 @@ function EditUserForm({ user, onDone }: { user: UserItem; onDone: () => void }) 
       updateUser(user.id, {
         fullName: values.fullName.trim(),
         roleCode: values.roleCode,
+        // Empty password = keep the current one (backend ignores it).
+        password: values.password.trim().length > 0 ? values.password.trim() : undefined,
       }),
     onSuccess: () => {
       toast.success('Usuario actualizado correctamente.');
@@ -321,6 +325,21 @@ function EditUserForm({ user, onDone }: { user: UserItem; onDone: () => void }) 
         <FieldError name="roleCode" message={fieldError('roleCode')} />
       </div>
 
+      <div className="field">
+        <label htmlFor="edit-user-password">Nueva contraseña</label>
+        <input
+          {...register('password', { validate: zodField(editUserPasswordSchema) })}
+          id="edit-user-password"
+          type="password"
+          autoComplete="new-password"
+          placeholder="Dejar vacío para mantener la actual"
+          aria-invalid={fieldError('password') ? 'true' : undefined}
+          aria-describedby={fieldError('password') ? fieldErrorId('password') : 'edit-user-password-hint'}
+        />
+        <FormHint id="edit-user-password-hint">{PASSWORD_HINT}</FormHint>
+        <FieldError name="password" message={fieldError('password')} />
+      </div>
+
       <div className="form-actions">
         <button type="button" className="btn btn--ghost" onClick={onDone}>
           Cancelar
@@ -340,6 +359,7 @@ function EditUserForm({ user, onDone }: { user: UserItem; onDone: () => void }) 
 type EditUserFormValues = {
   fullName: string;
   roleCode: string;
+  password: string;
 };
 
 function NewUserForm({ onDone }: { onDone: () => void }) {
