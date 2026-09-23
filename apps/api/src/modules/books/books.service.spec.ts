@@ -23,6 +23,13 @@ async function outcome(promise: Promise<unknown>): Promise<{ ok: boolean; error?
 
 const PNG_HEADER = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d]);
 
+/** RIFF/WEBP headers for every WebP sub-format (lossy VP8, lossless VP8L, extended VP8X). */
+const WEBP_HEADERS = {
+  'lossy VP8': Buffer.concat([Buffer.from('RIFF'), Buffer.from([0x14, 0x00, 0x00, 0x00]), Buffer.from('WEBPVP8 '), Buffer.from([0x00, 0x00, 0x00, 0x00])]),
+  'lossless VP8L': Buffer.concat([Buffer.from('RIFF'), Buffer.from([0x14, 0x00, 0x00, 0x00]), Buffer.from('WEBPVP8L'), Buffer.from([0x00, 0x00, 0x00, 0x00])]),
+  'extended VP8X': Buffer.concat([Buffer.from('RIFF'), Buffer.from([0x14, 0x00, 0x00, 0x00]), Buffer.from('WEBPVP8X'), Buffer.from([0x00, 0x00, 0x00, 0x00])]),
+} as const;
+
 describe('BooksService (unit)', () => {
   const prisma: {
     client: {
@@ -431,6 +438,27 @@ describe('BooksService (unit)', () => {
       // Replace semantics: the previous cover file is unlinked (best effort).
       expect(unlink).toHaveBeenCalledWith(expect.stringContaining('old-cover.png') as unknown as string);
     });
+
+    it.each(Object.entries(WEBP_HEADERS))(
+      'accepts a real WebP signature (%s) and stores the URL',
+      async (_label, header) => {
+        prisma.client.book.findFirst.mockResolvedValue(bookRow);
+        (readFile as Mock).mockResolvedValue(header);
+        prisma.client.book.update.mockResolvedValue({ ...bookRow, imageUrl: '/uploads/books/new.webp' });
+
+        const result = await outcome(
+          service.uploadImage(1, { mimetype: 'image/webp', size: 512, path: '/tmp/uploads/new.webp' }),
+        );
+
+        expect(result.ok).toBe(true);
+        expect(prisma.client.book.update).toHaveBeenCalledWith(
+          expect.objectContaining({
+            where: { id: 1 },
+            data: { imageUrl: '/uploads/books/new.webp' },
+          }),
+        );
+      },
+    );
   });
 
   // ── removeImage ───────────────────────────────────────────────────────────
