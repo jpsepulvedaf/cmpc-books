@@ -3,7 +3,13 @@ import { Request } from 'express';
 import { Observable, catchError, tap, throwError } from 'rxjs';
 import { ApiException } from '../../common/errors/api.exception';
 import { AuthUser } from '../../common/types/auth-user';
+import { PrismaService } from '../../common/services/prisma.service';
 import { AuditRecordInput, AuditService } from './audit.service';
+
+/** Prisma row reader used to snapshot the pre-mutation state (`before`). */
+interface AuditEntityReader {
+  (prisma: PrismaService, id: number): Promise<unknown>;
+}
 
 /** One route mapping: HTTP method + path pattern → audit action/entity. */
 interface AuditRule {
@@ -13,6 +19,8 @@ interface AuditRule {
   entityType: string;
   /** entityId comes from `request.params.id` when the route has an :id. */
   usesId?: boolean;
+  /** Prisma model name used to read the pre-mutation row (`before`). */
+  entity?: string;
   /** Extra sanitized metadata merged into `details` (never user input). */
   staticDetails?: Record<string, unknown>;
 }
@@ -48,6 +56,7 @@ const AUDIT_RULES: AuditRule[] = [
     action: 'UPDATE',
     entityType: 'BOOK',
     usesId: true,
+    entity: 'book',
   },
   {
     method: 'DELETE',
@@ -55,6 +64,7 @@ const AUDIT_RULES: AuditRule[] = [
     action: 'DELETE',
     entityType: 'BOOK',
     usesId: true,
+    entity: 'book',
   },
   {
     method: 'POST',
@@ -62,6 +72,7 @@ const AUDIT_RULES: AuditRule[] = [
     action: 'UPDATE',
     entityType: 'BOOK',
     usesId: true,
+    entity: 'book',
     staticDetails: { image: true },
   },
   {
@@ -70,6 +81,7 @@ const AUDIT_RULES: AuditRule[] = [
     action: 'UPDATE',
     entityType: 'BOOK',
     usesId: true,
+    entity: 'book',
     staticDetails: { image: false },
   },
   { method: 'POST', pattern: /^\/api\/users$/, action: 'CREATE', entityType: 'USER' },
@@ -79,6 +91,7 @@ const AUDIT_RULES: AuditRule[] = [
     action: 'UPDATE',
     entityType: 'USER',
     usesId: true,
+    entity: 'user',
   },
   {
     method: 'DELETE',
@@ -86,11 +99,12 @@ const AUDIT_RULES: AuditRule[] = [
     action: 'DELETE',
     entityType: 'USER',
     usesId: true,
+    entity: 'user',
   },
   // ── Catalog maintainers (authors / publishers / genres) — CRUD writes ─────
-  ...catalogAuditRules('authors', 'AUTHOR'),
-  ...catalogAuditRules('publishers', 'PUBLISHER'),
-  ...catalogAuditRules('genres', 'GENRE'),
+  ...catalogAuditRules('authors', 'AUTHOR', 'author'),
+  ...catalogAuditRules('publishers', 'PUBLISHER', 'publisher'),
+  ...catalogAuditRules('genres', 'GENRE', 'genre'),
   {
     method: 'GET',
     pattern: /^\/api\/books\/export$/,
@@ -105,7 +119,7 @@ const AUDIT_RULES: AuditRule[] = [
  * /api/authors[/:id]. Reads of the catalogs are deliberately NOT audited
  * (documented above); only the maintenance writes are.
  */
-function catalogAuditRules(routeName: string, entityType: string): AuditRule[] {
+function catalogAuditRules(routeName: string, entityType: string, entity: string): AuditRule[] {
   const plural = `api/${routeName}`;
   return [
     {
@@ -120,6 +134,7 @@ function catalogAuditRules(routeName: string, entityType: string): AuditRule[] {
       action: 'UPDATE',
       entityType,
       usesId: true,
+      entity,
     },
     {
       method: 'DELETE',
@@ -127,6 +142,7 @@ function catalogAuditRules(routeName: string, entityType: string): AuditRule[] {
       action: 'DELETE',
       entityType,
       usesId: true,
+      entity,
     },
   ];
 }
@@ -152,7 +168,10 @@ function catalogAuditRules(routeName: string, entityType: string): AuditRule[] {
  */
 @Injectable()
 export class AuditInterceptor implements NestInterceptor {
-  constructor(private readonly audit: AuditService) {}
+  constructor(
+    private readonly audit: AuditService,
+    private readonly prisma: PrismaService,
+  ) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
     const request: Request = context.switchToHttp().getRequest();
@@ -164,12 +183,19 @@ export class AuditInterceptor implements NestInterceptor {
     }
 
     const entry = this.buildEntry(request, rule);
+    // Pre-mutation snapshot for UPDATE/DELETE rows (read BEFORE the handler
+    // runs so we can record what the operation changed). Best-effort: a read
+    // failure must never block the business operation.
+    const before = this.readBefore(request, rule);
 
     return next.handle().pipe(
       tap((data) => {
         // Success path: record after the handler resolved, without awaiting.
         const withEntityId = this.applyCreatedId(entry, data);
-        this.fireAndForget(withEntityId, { ...rule.staticDetails, success: true });
+        void before.then((beforeRow) => {
+          const details = this.successDetails(rule, request, beforeRow);
+          this.fireAndForget(withEntityId, details);
+        });
       }),
       catchError((error: unknown) => {
         // Failure path: the operation was ATTEMPTED, still worth recording.
@@ -178,6 +204,158 @@ export class AuditInterceptor implements NestInterceptor {
         return throwError(() => error);
       }),
     );
+  }
+
+  /**
+   * Reads the CURRENT row for UPDATE/DELETE so the audit entry can show the
+   * pre-mutation state (`before`). Best-effort: a DB hiccup here returns
+   * undefined and never blocks the actual operation (resolved in the tap).
+   */
+  private readBefore(
+    request: Request,
+    rule: AuditRule,
+  ): Promise<Record<string, unknown> | undefined> {
+    if (!rule.entity || !rule.usesId) {
+      return Promise.resolve(undefined);
+    }
+    const id = Number(request.params?.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      return Promise.resolve(undefined);
+    }
+    const table = this.readerFor(rule.entity);
+    if (!table) return Promise.resolve(undefined);
+    return table(this.prisma, id)
+      .then((row) =>
+        row && typeof row === 'object'
+          ? this.sanitizeRow(rule, row as Record<string, unknown>)
+          : undefined,
+      )
+      .catch(() => undefined);
+  }
+
+  private readerFor(entity: string | undefined): AuditEntityReader | undefined {
+    if (!entity) return undefined;
+    return AuditInterceptor.entityReaders[entity];
+  }
+
+  /** Lookup: audit entity name → a safe typed reader (id → row). */
+  static readonly entityReaders: Record<string, AuditEntityReader> = {
+    book: async (prisma, id) => prisma.client.book.findUnique({ where: { id } }),
+    user: async (prisma, id) => prisma.client.user.findUnique({ where: { id } }),
+    author: async (prisma, id) => prisma.client.author.findUnique({ where: { id } }),
+    publisher: async (prisma, id) => prisma.client.publisher.findUnique({ where: { id } }),
+    genre: async (prisma, id) => prisma.client.genre.findUnique({ where: { id } }),
+  };
+
+  /** Only safe, non-sensitive fields are kept in the audit trail. */
+  private sanitizeRow(
+    rule: AuditRule,
+    row: Record<string, unknown>,
+  ): Record<string, unknown> | undefined {
+    const pick = (keys: string[]): Record<string, unknown> | undefined => {
+      const out: Record<string, unknown> = {};
+      let any = false;
+      for (const key of keys) {
+        if (row[key] !== undefined) {
+          out[key] = row[key];
+          any = true;
+        }
+      }
+      return any ? out : undefined;
+    };
+    switch (rule.entityType) {
+      case 'USER':
+        return pick(['id', 'email', 'fullName', 'roleId', 'isActive', 'deletedAt']);
+      case 'BOOK':
+        return pick([
+          'id',
+          'isbn',
+          'title',
+          'description',
+          'price',
+          'stock',
+          'availability',
+          'imageUrl',
+          'authorId',
+          'publisherId',
+          'genreId',
+        ]);
+      case 'AUTHOR':
+      case 'PUBLISHER':
+      case 'GENRE':
+        return pick(['id', 'name']);
+      default:
+        return undefined;
+    }
+  }
+
+  /**
+   * Success payload: `before` (pre-mutation row, when known) + `after` (the
+   * request body — sanitized) + the static metadata. For CREATE there is no
+   * `before`, only the created `after`; for UPDATE/DELETE we show both.
+   */
+  private successDetails(
+    rule: AuditRule,
+    request: Request,
+    beforeRow: Record<string, unknown> | undefined,
+  ): Record<string, unknown> {
+    const details: Record<string, unknown> = { ...rule.staticDetails, success: true };
+    if (rule.action === 'CREATE') {
+      details.after = this.sanitizeBody(rule, request.body);
+    } else {
+      if (beforeRow) details.before = beforeRow;
+      details.after = this.sanitizeBody(rule, request.body);
+    }
+    return details;
+  }
+
+  /** Sanitized request body — never passwords/tokens; raw body never stored. */
+  private sanitizeBody(
+    rule: AuditRule,
+    body: unknown,
+  ): Record<string, unknown> | undefined {
+    if (body === null || typeof body !== 'object') return undefined;
+    const raw = body as Record<string, unknown>;
+    switch (rule.entityType) {
+      case 'USER':
+        // Never persist password attempts or hashes.
+        return this.compact({
+          fullName: raw.fullName,
+          roleCode: raw.roleCode,
+          isActive: raw.isActive,
+          email: raw.email,
+        });
+      case 'BOOK':
+        return this.compact({
+          isbn: raw.isbn,
+          title: raw.title,
+          description: raw.description,
+          price: raw.price,
+          stock: raw.stock,
+          availability: raw.availability,
+          authorId: raw.authorId,
+          publisherId: raw.publisherId,
+          genreId: raw.genreId,
+        });
+      case 'AUTHOR':
+      case 'PUBLISHER':
+      case 'GENRE':
+        return this.compact({ name: raw.name });
+      default:
+        return undefined;
+    }
+  }
+
+  private compact(source: Record<string, unknown>): Record<string, unknown> | undefined {
+    const out: Record<string, unknown> = {};
+    let any = false;
+    for (const [key, value] of Object.entries(source)) {
+      if (value !== undefined) {
+        out[key] = value;
+        any = true;
+      }
+    }
+    return any ? out : undefined;
   }
 
   /**
