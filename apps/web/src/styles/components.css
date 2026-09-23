@@ -235,13 +235,9 @@
 }
 
 .navbar__user-name {
-  max-width: 190px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   color: var(--color-text);
-  font-weight: 600;
-  font-size: 0.9rem;
+  font-weight: 400;
+  font-size: 1rem;
 }
 
 .navbar__toggle {

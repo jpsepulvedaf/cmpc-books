@@ -8,23 +8,15 @@ import { AppLayout } from './AppLayout';
 
 const mocks = vi.hoisted(() => ({
   navigate: vi.fn(),
-  exportBooksCsv: vi.fn(),
-  triggerCsvDownload: vi.fn(),
   toast: { success: vi.fn(), error: vi.fn() },
-  location: { pathname: '/libros' },
 }));
 
 vi.mock('react-router-dom', () => ({
   NavLink: ({ to, children }: { to: string; children: ReactNode }) => <a href={to}>{children}</a>,
   Outlet: () => null,
   useNavigate: () => mocks.navigate,
-  useLocation: () => mocks.location,
 }));
 vi.mock('sonner', () => ({ toast: mocks.toast }));
-vi.mock('../features/books/api', () => ({
-  exportBooksCsv: mocks.exportBooksCsv,
-  triggerCsvDownload: mocks.triggerCsvDownload,
-}));
 
 function renderLayout() {
   return render(<AppLayout />);
@@ -36,7 +28,6 @@ const operadorUser = { id: 8, email: 'ope@cmpc.libros', fullName: 'Oscar Operado
 beforeEach(() => {
   localStorage.clear();
   vi.clearAllMocks();
-  mocks.location = { pathname: '/libros' };
 });
 
 afterEach(() => {
@@ -53,10 +44,9 @@ describe('AppLayout', () => {
     expect(screen.queryByText('Auditoría')).not.toBeNull();
     expect(screen.getByText('Ana Admin')).toBeInTheDocument();
     expect(screen.getByText('Administrador')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Exportar CSV' })).toBeInTheDocument();
   });
 
-  it('hides Usuarios and Auditoría for an OPERADOR but keeps the CSV export', () => {
+  it('hides Usuarios and Auditoría for an OPERADOR', () => {
     setSession('tok', operadorUser);
     renderLayout();
 
@@ -64,14 +54,13 @@ describe('AppLayout', () => {
     expect(screen.queryByText('Usuarios')).toBeNull();
     expect(screen.queryByText('Auditoría')).toBeNull();
     expect(screen.getByText('Operador')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Exportar CSV' })).toBeInTheDocument();
   });
 
-  it('hides the CSV export outside the /libros section', () => {
+  // The document CSV export lives inside the books section, not in the navbar,
+  // so no export button should ever appear in this layout.
+  it('never renders an Exportar CSV button in the navbar', () => {
     setSession('tok', adminUser);
-    mocks.location = { pathname: '/usuarios' };
     renderLayout();
-
     expect(screen.queryByRole('button', { name: 'Exportar CSV' })).toBeNull();
   });
 
@@ -91,30 +80,6 @@ describe('AppLayout', () => {
     expect(mocks.navigate).toHaveBeenCalledWith('/login', { replace: true });
     expect(getSession()).toBeNull();
     expect(localStorage.getItem('cmpc_token')).toBeNull();
-  });
-
-  it('exports the full catalog from the navbar button', async () => {
-    mocks.exportBooksCsv.mockResolvedValue({ blob: new Blob(['a,b']), filename: 'libros.csv' });
-    setSession('tok', adminUser);
-    renderLayout();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Exportar CSV' }));
-    await vi.waitFor(() => expect(mocks.exportBooksCsv).toHaveBeenCalledWith({}));
-    await vi.waitFor(() =>
-      expect(mocks.triggerCsvDownload).toHaveBeenCalledWith({ blob: expect.anything(), filename: 'libros.csv' })
-    );
-    expect(mocks.toast.success).toHaveBeenCalledWith('Exportación completada: libros.csv');
-  });
-
-  it('notifies the user when the export fails', async () => {
-    mocks.exportBooksCsv.mockRejectedValue(new Error('boom'));
-    setSession('tok', adminUser);
-    renderLayout();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Exportar CSV' }));
-    await vi.waitFor(() =>
-      expect(mocks.toast.error).toHaveBeenCalledWith('No se pudo exportar el catálogo.')
-    );
   });
 
   it('opens the mobile menu and logs out from it', () => {

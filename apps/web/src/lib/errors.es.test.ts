@@ -16,6 +16,12 @@ describe('translateErrorCode', () => {
     expect(translateErrorCode('EMAIL_EXISTS')).toBe('El correo ya está registrado.');
     expect(translateErrorCode('BOOK_NOT_FOUND')).toBe('Libro no encontrado.');
     expect(translateErrorCode('FORBIDDEN')).toBe('No tienes permisos para realizar esta acción.');
+    expect(translateErrorCode('USER_INACTIVE')).toBe(
+      'Tu usuario está desactivado. Contacta con la administración.'
+    );
+    expect(translateErrorCode('SELF_ACTION_FORBIDDEN')).toBe(
+      'No puedes realizar esta acción sobre tu propia cuenta.'
+    );
   });
 
   it('returns undefined for unknown codes so callers can fall back', () => {
@@ -39,11 +45,13 @@ describe('error message constants', () => {
   it('covers every code in the map without gaps', () => {
     const expectedCodes = [
       'INVALID_CREDENTIALS',
+      'USER_INACTIVE',
       'EMAIL_EXISTS',
       'USER_NOT_FOUND',
       'BOOK_NOT_FOUND',
       'FORBIDDEN',
       'UNAUTHORIZED',
+      'SELF_ACTION_FORBIDDEN',
       'DUPLICATE_ISBN',
       'INVALID_IMAGE',
       'VALIDATION_FAILED',

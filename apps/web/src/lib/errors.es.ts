@@ -3,11 +3,13 @@
 
 export const ERROR_MESSAGES: Readonly<Record<string, string>> = {
   INVALID_CREDENTIALS: 'Credenciales inválidas. Verifica tu correo y contraseña.',
+  USER_INACTIVE: 'Tu usuario está desactivado. Contacta con la administración.',
   EMAIL_EXISTS: 'El correo ya está registrado.',
   USER_NOT_FOUND: 'Usuario no encontrado.',
   BOOK_NOT_FOUND: 'Libro no encontrado.',
   FORBIDDEN: 'No tienes permisos para realizar esta acción.',
   UNAUTHORIZED: 'Tu sesión no es válida. Inicia sesión nuevamente.',
+  SELF_ACTION_FORBIDDEN: 'No puedes realizar esta acción sobre tu propia cuenta.',
   DUPLICATE_ISBN: 'Ya existe un libro con este ISBN.',
   INVALID_IMAGE: 'La imagen no es válida (JPEG, PNG o WebP, máx. 2 MB).',
   VALIDATION_FAILED: 'Revisa los campos marcados.',
