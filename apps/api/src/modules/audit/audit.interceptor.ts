@@ -32,6 +32,8 @@ interface AuditRule {
  *  - POST /api/auth/login → LOGIN/AUTH (success AND failure, see below)
  *  - POST/PATCH/DELETE /api/books[/:id][/image] → CREATE/UPDATE/DELETE/BOOK
  *  - POST/PATCH/DELETE /api/users[/:id] → CREATE/UPDATE/DELETE/USER
+ *  - POST/PATCH/DELETE /api/authors|publishers|genres[/:id] → catalog CRUD
+ *    (CREATE/UPDATE/DELETE on AUTHOR/PUBLISHER/GENRE)
  *  - GET /api/books/export → EXPORT/BOOK (data exfiltration-worth tracking)
  *
  * `usesId` routes read the id from `request.params.id` (string), so `entityId`
@@ -85,6 +87,10 @@ const AUDIT_RULES: AuditRule[] = [
     entityType: 'USER',
     usesId: true,
   },
+  // ── Catalog maintainers (authors / publishers / genres) — CRUD writes ─────
+  ...catalogAuditRules('authors', 'AUTHOR'),
+  ...catalogAuditRules('publishers', 'PUBLISHER'),
+  ...catalogAuditRules('genres', 'GENRE'),
   {
     method: 'GET',
     pattern: /^\/api\/books\/export$/,
@@ -93,6 +99,37 @@ const AUDIT_RULES: AuditRule[] = [
     staticDetails: { format: 'csv' },
   },
 ];
+
+/**
+ * Builds the three write rules (CREATE/UPDATE/DELETE) for a catalog route like
+ * /api/authors[/:id]. Reads of the catalogs are deliberately NOT audited
+ * (documented above); only the maintenance writes are.
+ */
+function catalogAuditRules(routeName: string, entityType: string): AuditRule[] {
+  const plural = `api/${routeName}`;
+  return [
+    {
+      method: 'POST',
+      pattern: new RegExp(`^/${plural}$`),
+      action: 'CREATE',
+      entityType,
+    },
+    {
+      method: 'PATCH',
+      pattern: new RegExp(`^/${plural}/\\d+$`),
+      action: 'UPDATE',
+      entityType,
+      usesId: true,
+    },
+    {
+      method: 'DELETE',
+      pattern: new RegExp(`^/${plural}/\\d+$`),
+      action: 'DELETE',
+      entityType,
+      usesId: true,
+    },
+  ];
+}
 
 /**
  * Global audit interceptor. It runs for EVERY request (registered as
