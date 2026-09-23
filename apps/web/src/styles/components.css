@@ -408,12 +408,24 @@
 
 .form-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  /* 6 equal columns → rows of 3 (span 2) or 2 (span 3) are easy to build:
+       Título(6) / ISBN·Precio·Stock(2+2+2) / Autor·Editorial(3+3) / Género·Descripción(3+3) */
+  grid-template-columns: repeat(6, 1fr);
   gap: 16px;
 }
 
 .form-grid__full {
   grid-column: 1 / -1;
+}
+
+/* Half row: 3 of 6 columns (a field of 3) — used for the wider catalog fields. */
+.form-grid__half {
+  grid-column: span 3;
+}
+
+/* Third row: 2 of 6 columns (a field of 2) — used for the compact fields. */
+.form-grid__third {
+  grid-column: span 2;
 }
 
 .field {

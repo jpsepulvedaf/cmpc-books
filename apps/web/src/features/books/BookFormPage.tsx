@@ -258,7 +258,7 @@ useEffect(() => {
             <FieldError name="title" message={fieldError('title')} />
           </div>
 
-          <div className="field">
+          <div className="field form-grid__third">
             <label htmlFor="book-isbn">ISBN (opcional)</label>
             <input
               {...register('isbn', { validate: zodField(bookSchemas.isbn) })}
@@ -271,7 +271,7 @@ useEffect(() => {
             <FieldError name="isbn" message={fieldError('isbn')} />
           </div>
 
-          <div className="field">
+          <div className="field form-grid__third">
             <label htmlFor="book-price">Precio (CLP) *</label>
             <input
               {...register('price', { validate: zodField(bookSchemas.price) })}
@@ -285,7 +285,7 @@ useEffect(() => {
             <FieldError name="price" message={fieldError('price')} />
           </div>
 
-          <div className="field">
+          <div className="field form-grid__third">
             <label htmlFor="book-stock">Stock *</label>
             <input
               {...register('stock', { validate: zodField(bookSchemas.stock) })}
@@ -299,7 +299,7 @@ useEffect(() => {
             <FieldError name="stock" message={fieldError('stock')} />
           </div>
 
-          <div className="field field-with-add">
+          <div className="field field-with-add form-grid__half">
             <label htmlFor="book-author">Autor *</label>
             <div className="field-add-row">
               <select
@@ -329,7 +329,7 @@ useEffect(() => {
             <FieldError name="authorId" message={fieldError('authorId')} />
           </div>
 
-          <div className="field field-with-add">
+          <div className="field field-with-add form-grid__half">
             <label htmlFor="book-publisher">Editorial *</label>
             <div className="field-add-row">
               <select
@@ -359,7 +359,7 @@ useEffect(() => {
             <FieldError name="publisherId" message={fieldError('publisherId')} />
           </div>
 
-          <div className="field field-with-add">
+          <div className="field field-with-add form-grid__full">
             <label htmlFor="book-genre">Género *</label>
             <div className="field-add-row">
               <select
